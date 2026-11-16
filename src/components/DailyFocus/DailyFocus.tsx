@@ -213,6 +213,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
           </div>
           <Timer
             task={activeTask}
+            project={getProject(activeTask.projectId)}
             onTaskCompleted={handleTaskCompleted}
             onTimeLogged={handleTimeLogged}
           />

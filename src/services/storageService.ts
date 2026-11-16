@@ -1,12 +1,12 @@
 import { Project, Task, DailyPlan, WorkSession, ChatMessage, UserSettings } from '../types';
 
 const STORAGE_KEYS = {
-  PROJECTS: 'devpace_projects',
-  TASKS: 'devpace_tasks',
-  DAILY_PLANS: 'devpace_daily_plans',
-  SESSIONS: 'devpace_sessions',
-  CHAT_MESSAGES: 'devpace_chat_messages',
-  SETTINGS: 'devpace_settings',
+  PROJECTS: 'procrastinator_projects',
+  TASKS: 'procrastinator_tasks',
+  DAILY_PLANS: 'procrastinator_daily_plans',
+  SESSIONS: 'procrastinator_sessions',
+  CHAT_MESSAGES: 'procrastinator_chat_messages',
+  SETTINGS: 'procrastinator_settings',
 };
 
 const DEFAULT_SETTINGS: UserSettings = {

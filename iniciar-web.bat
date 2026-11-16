@@ -1,6 +1,6 @@
 @echo off
-title DevPace Web Mode
+title Procrastinator (Web)
 cd /d "%~dp0"
-echo Iniciando DevPace en modo navegador...
+echo Iniciando Procrastinator en el navegador...
 call npm.cmd run dev
 pause

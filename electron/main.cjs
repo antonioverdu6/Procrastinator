@@ -10,7 +10,7 @@ function createWindow() {
     height: 840,
     minWidth: 960,
     minHeight: 680,
-    title: 'DevPace - Anti-Procrastination Project Manager',
+    title: 'Procrastinator',
     backgroundColor: '#F8FAFC',
     autoHideMenuBar: true,
     show: false,

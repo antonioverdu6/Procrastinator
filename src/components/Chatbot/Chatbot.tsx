@@ -69,7 +69,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   };
 
   const handleClearHistory = () => {
-    localStorage.removeItem('devpace_chat_messages');
+    localStorage.removeItem('procrastinator_chat_messages');
     const initial = StorageService.getChatMessages();
     setMessages(initial);
   };

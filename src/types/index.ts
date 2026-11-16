@@ -83,3 +83,29 @@ export interface ProductivityStats {
   totalTasksFinished: number;
   accuracyRatio: number; // actual / estimated
 }
+
+export interface TaskActionPlan {
+  summary: string;
+  steps: string[];
+  filesToTouch: string[];
+  pitfall: string;
+  quickSnippet?: string;
+}
+
+export interface TaskPMEvaluation {
+  isUseful: boolean;
+  verdict: string;
+  suggestedPriority: Priority;
+  estimatedMinutes: number;
+  breakdownWarning?: string;
+}
+
+export interface ProposedTask {
+  id: string;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  priority: Priority;
+  difficulty: Difficulty;
+}
+

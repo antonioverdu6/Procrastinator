@@ -1,8 +1,8 @@
 {
-  "name": "procrastinator-app",
+  "name": "procrastinator",
   "version": "1.0.0",
   "type": "module",
-  "description": "Smart Project Manager and Anti-Procrastination Assistant for Windows",
+  "description": "Aplicación de escritorio para no procrastinar y gestionar proyectos",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
@@ -22,8 +22,8 @@
     "tailwind-merge": "^2.5.4"
   },
   "build": {
-    "appId": "com.devpace.antiprocrastinator",
-    "productName": "DevPace",
+    "appId": "com.procrastinator.app",
+    "productName": "Procrastinator",
     "directories": {
       "output": "release"
     },

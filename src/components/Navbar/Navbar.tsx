@@ -31,10 +31,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Logotipo Minimalista */}
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#2563EB] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-            D
+            P
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#0F172A] text-base tracking-tight">DevPace</span>
+            <span className="font-bold text-[#0F172A] text-base tracking-tight">Procrastinator</span>
             <span className="text-[11px] font-medium text-[#64748B] border-l border-[#E2E8F0] pl-2 hidden sm:inline">
               Anti-Procrastinación
             </span>
