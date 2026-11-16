@@ -84,9 +84,9 @@ export const App: React.FC = () => {
         stats={stats}
       />
 
-      {/* Vista Activa */}
+      {/* Vistas persistentes (evita desmontar y reiniciar el reloj o formularios al cambiar de pestaña) */}
       <ProcrastinatorBox as="main" variant="canvas">
-        {currentTab === 'daily' && (
+        <div style={{ display: currentTab === 'daily' ? 'block' : 'none' }}>
           <DailyFocus
             tasks={tasks}
             projects={projects}
@@ -94,28 +94,28 @@ export const App: React.FC = () => {
             onRefreshData={refreshData}
             onOpenChat={() => setCurrentTab('chat')}
           />
-        )}
+        </div>
 
-        {currentTab === 'projects' && (
+        <div style={{ display: currentTab === 'projects' ? 'block' : 'none' }}>
           <ProjectManager
             projects={projects}
             tasks={tasks}
             onRefreshData={refreshData}
             onOpenChat={() => setCurrentTab('chat')}
           />
-        )}
+        </div>
 
-        {currentTab === 'dashboard' && (
-          <Dashboard />
-        )}
+        <div style={{ display: currentTab === 'dashboard' ? 'block' : 'none' }}>
+          <Dashboard stats={stats} />
+        </div>
 
-        {currentTab === 'chat' && (
+        <div style={{ display: currentTab === 'chat' ? 'block' : 'none' }}>
           <Chatbot
             settings={settings}
             onRefreshData={refreshData}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
-        )}
+        </div>
       </ProcrastinatorBox>
 
       {/* Modal de Configuración */}

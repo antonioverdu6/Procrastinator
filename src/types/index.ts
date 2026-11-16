@@ -72,6 +72,30 @@ export interface UserSettings {
   autoBreakdownTasks: boolean;
 }
 
+export interface WeeklyActivityPoint {
+  date: string;
+  dayName: string;
+  plannedHours: number;
+  actualHours: number;
+  completionPercent?: number;
+  tasksCount?: number;
+}
+
+export interface ProjectProgressPoint {
+  id: string;
+  name: string;
+  color: string;
+  completedHours: number;
+  totalHours: number;
+  percentage: number;
+}
+
+export interface DistributionPoint {
+  label: string;
+  count: number;
+  color: string;
+}
+
 export interface ProductivityStats {
   streakDays: number;
   totalHoursCompleted: number;
@@ -82,6 +106,10 @@ export interface ProductivityStats {
   procrastinationScore: number; // 0 - 100 (100 = high focus, low deferred)
   totalTasksFinished: number;
   accuracyRatio: number; // actual / estimated
+  weeklyActivity?: WeeklyActivityPoint[];
+  projectProgress?: ProjectProgressPoint[];
+  priorityDistribution?: DistributionPoint[];
+  difficultyDistribution?: DistributionPoint[];
 }
 
 export interface TaskActionPlan {

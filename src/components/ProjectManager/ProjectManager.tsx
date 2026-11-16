@@ -6,7 +6,7 @@ import { ProcrastinatorButton } from '../ProcrastinatorButton';
 import { ProcrastinatorBadge } from '../ProcrastinatorBadge';
 import { ProcrastinatorInput } from '../ProcrastinatorInput';
 import { ProcrastinatorText } from '../ProcrastinatorText';
-import { FolderKanban, Plus, Trash2, ArrowUpRight, Sparkles, Send, Check, ArrowRight } from 'lucide-react';
+import { FolderKanban, Plus, Trash2, ArrowUpRight, Sparkles, Send, Check, ArrowRight, X } from 'lucide-react';
 import { styles } from '../../style';
 
 interface ProjectManagerProps {
@@ -22,8 +22,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
   onRefreshData
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
-  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
-  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [showNewProjectPanel, setShowNewProjectPanel] = useState(false);
+  const [showNewTaskPanel, setShowNewTaskPanel] = useState(false);
 
   // States para nuevo proyecto y asistente de desglose
   const [newProjName, setNewProjName] = useState('');
@@ -96,7 +96,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
       setTaskTitle('');
       setTaskDesc('');
       setEvaluation(null);
-      setShowNewTaskModal(false);
+      setShowNewTaskPanel(false);
       onRefreshData();
     } catch (err) {
       console.error(err);
@@ -188,7 +188,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
       setProposedTasks([]);
       setProjectStep(1);
       setRefineMessages([]);
-      setShowNewProjectModal(false);
+      setShowNewProjectPanel(false);
       onRefreshData();
     } catch (err) {
       console.error(err);
@@ -232,7 +232,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             variant="secondary"
             onClick={() => {
               setProjectStep(1);
-              setShowNewProjectModal(true);
+              setShowNewProjectPanel(prev => !prev);
+              setShowNewTaskPanel(false);
             }}
           >
             <FolderKanban className="w-4 h-4 text-[#2563EB]" /> Nuevo Proyecto
@@ -241,13 +242,397 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             variant="primary"
             onClick={() => {
               setEvaluation(null);
-              setShowNewTaskModal(true);
+              setShowNewTaskPanel(prev => !prev);
+              setShowNewProjectPanel(false);
             }}
           >
             <Plus className="w-4 h-4" /> Nueva Tarea
           </ProcrastinatorButton>
         </ProcrastinatorBox>
       </ProcrastinatorBox>
+
+      {/* PANEL INTEGRADO: NUEVO PROYECTO (Diseño 100% plano, sin modales ni sombras) */}
+      {showNewProjectPanel && (
+        <ProcrastinatorBox variant="panel" className="animate-fadeIn">
+          <ProcrastinatorBox className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+            <ProcrastinatorBox className="flex items-center gap-2">
+              <FolderKanban className="w-5 h-5 text-[#2563EB]" />
+              <ProcrastinatorText variant="h2">
+                {projectStep === 1 ? 'Crear Nuevo Proyecto' : `Desglose & Ajuste: ${newProjName}`}
+              </ProcrastinatorText>
+            </ProcrastinatorBox>
+            <button
+              onClick={() => {
+                setShowNewProjectPanel(false);
+                setProjectStep(1);
+              }}
+              className="text-[#94A3B8] hover:text-[#0F172A] p-1 rounded-lg transition-colors"
+              title="Cerrar panel"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </ProcrastinatorBox>
+
+          {/* PASO 1: Datos básicos y disparo de IA */}
+          {projectStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <ProcrastinatorInput
+                  label="Nombre del Proyecto"
+                  type="text"
+                  placeholder="Ej. App de Facturación Simple, Bot de Scraping..."
+                  value={newProjName}
+                  onChange={e => setNewProjName(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className={styles.input.label}>Descripción / Qué quieres construir</label>
+                <textarea
+                  placeholder="Describe las funcionalidades clave, tecnologías que quieres usar o qué problema resuelve..."
+                  value={newProjDesc}
+                  onChange={e => setNewProjDesc(e.target.value)}
+                  rows={3}
+                  className={styles.input.base}
+                />
+              </div>
+
+              <div>
+                <ProcrastinatorInput
+                  label="Meta aproximada de horas"
+                  type="number"
+                  value={newProjHours}
+                  onChange={e => setNewProjHours(Number(e.target.value))}
+                  min={5}
+                  max={200}
+                />
+              </div>
+
+              <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newProjName.trim()) return;
+                    await api.createProject({
+                      name: newProjName.trim(),
+                      description: newProjDesc.trim(),
+                      color: '#2563EB',
+                      targetHours: newProjHours,
+                      status: 'active'
+                    });
+                    setNewProjName('');
+                    setNewProjDesc('');
+                    setShowNewProjectPanel(false);
+                    onRefreshData();
+                  }}
+                  disabled={!newProjName.trim()}
+                  className="text-xs text-[#64748B] hover:text-[#0F172A] hover:underline"
+                >
+                  Crear vacío sin tareas
+                </button>
+
+                <div className="flex gap-2">
+                  <ProcrastinatorButton
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowNewProjectPanel(false)}
+                  >
+                    Cancelar
+                  </ProcrastinatorButton>
+                  <ProcrastinatorButton
+                    type="button"
+                    variant="primary"
+                    onClick={handleStartProjectRoadmap}
+                    disabled={!newProjName.trim() || isGeneratingRoadmap}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{isGeneratingRoadmap ? 'Desglosando proyecto con IA...' : 'Desglosar y Planificar Tareas con PM'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </ProcrastinatorButton>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PASO 2: Lista de tareas propuestas con edición directa y chat conversacional */}
+          {projectStep === 2 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs text-[#64748B]">
+                <span>El PM propone <strong>{proposedTasks.length} micro-tareas</strong>. Puedes editarlas directamente o conversar para adaptarlas:</span>
+              </div>
+
+              {/* Lista de tareas propuestas (editables directamente) */}
+              <div className="space-y-2 max-h-56 overflow-y-auto border border-[#E2E8F0] rounded-xl p-2 bg-[#F8FAFC]">
+                {proposedTasks.map((t, idx) => (
+                  <div key={t.id} className="p-2.5 bg-white border border-[#E2E8F0] rounded-lg flex items-center justify-between gap-2 text-xs">
+                    <span className="font-mono text-[#94A3B8] font-bold">{idx + 1}.</span>
+                    <input
+                      type="text"
+                      value={t.title}
+                      onChange={e => handleUpdateProposedTask(t.id, 'title', e.target.value)}
+                      className="flex-1 bg-transparent border-b border-transparent hover:border-[#CBD5E1] focus:border-[#2563EB] focus:outline-none font-medium text-[#0F172A] px-1 py-0.5"
+                    />
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <input
+                        type="number"
+                        value={t.estimatedMinutes}
+                        onChange={e => handleUpdateProposedTask(t.id, 'estimatedMinutes', Number(e.target.value))}
+                        className="w-14 bg-[#F1F5F9] border border-[#E2E8F0] rounded px-1.5 py-0.5 text-center font-mono"
+                        title="Minutos"
+                      />
+                      <span className="text-[#94A3B8]">m</span>
+                      <button
+                        onClick={() => handleDeleteProposedTask(t.id)}
+                        className="p-1 text-[#94A3B8] hover:text-[#DC2626] rounded transition-colors"
+                        title="Quitar tarea"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mini Chat con el PM para afinar el desglose */}
+              <div className="border border-[#E2E8F0] rounded-xl p-3 bg-white space-y-2">
+                <div className="text-xs font-semibold text-[#0F172A] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
+                  Conversar con el PM para afinar las tareas:
+                </div>
+
+                <div className="space-y-2 max-h-32 overflow-y-auto text-xs">
+                  {refineMessages.map((m, i) => (
+                    <div
+                      key={i}
+                      className={`p-2 rounded-lg ${
+                        m.role === 'user'
+                          ? 'bg-[#EFF6FF] text-[#1D4ED8] ml-6'
+                          : 'bg-[#F8FAFC] border border-[#E2E8F0] text-[#334155] mr-6'
+                      }`}
+                    >
+                      {m.text}
+                    </div>
+                  ))}
+                  {isRefining && (
+                    <div className="text-xs text-[#64748B] italic">Ajustando tareas con el PM...</div>
+                  )}
+                </div>
+
+                <form onSubmit={handleRefineRoadmap} className="flex gap-2">
+                  <ProcrastinatorInput
+                    type="text"
+                    placeholder="Ej: 'Quita los pagos y pon login con Google', 'Hazlas de 25 min máximo'..."
+                    value={refineInput}
+                    onChange={e => setRefineInput(e.target.value)}
+                    disabled={isRefining}
+                  />
+                  <ProcrastinatorButton
+                    type="submit"
+                    variant="primary"
+                    disabled={!refineInput.trim() || isRefining}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </ProcrastinatorButton>
+                </form>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-[#E2E8F0]">
+                <ProcrastinatorButton
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setProjectStep(1)}
+                >
+                  Atrás
+                </ProcrastinatorButton>
+
+                <ProcrastinatorButton
+                  type="button"
+                  variant="success"
+                  onClick={handleConfirmProject}
+                  disabled={proposedTasks.length === 0}
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Crear Proyecto y Guardar {proposedTasks.length} Tareas en el Backlog</span>
+                </ProcrastinatorButton>
+              </div>
+            </div>
+          )}
+        </ProcrastinatorBox>
+      )}
+
+      {/* PANEL INTEGRADO: NUEVA TAREA (Diseño 100% plano, sin modales ni sombras) */}
+      {showNewTaskPanel && (
+        <ProcrastinatorBox variant="panel" className="animate-fadeIn">
+          <ProcrastinatorBox className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+            <ProcrastinatorBox className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-[#2563EB]" />
+              <ProcrastinatorText variant="h2">Nueva Tarea con Revisión del PM</ProcrastinatorText>
+            </ProcrastinatorBox>
+            <button
+              onClick={() => {
+                setShowNewTaskPanel(false);
+                setEvaluation(null);
+              }}
+              className="text-[#94A3B8] hover:text-[#0F172A] p-1 rounded-lg transition-colors"
+              title="Cerrar panel"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </ProcrastinatorBox>
+
+          <form onSubmit={handleCreateTask} className="space-y-4">
+            <div>
+              <label className={styles.input.label}>Proyecto</label>
+              <select
+                value={taskProject}
+                onChange={e => setTaskProject(e.target.value)}
+                className={styles.input.select}
+              >
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={styles.input.label}>Título de la Tarea</label>
+              <ProcrastinatorBox className="flex gap-2">
+                <ProcrastinatorInput
+                  type="text"
+                  placeholder="Ej. Implementar caché Redis para la API..."
+                  value={taskTitle}
+                  onChange={e => setTaskTitle(e.target.value)}
+                  required
+                  autoFocus
+                />
+                <ProcrastinatorButton
+                  type="button"
+                  variant="secondary"
+                  onClick={handleEvaluateTask}
+                  disabled={!taskTitle.trim() || isEvaluating}
+                  className="flex-shrink-0 text-[#2563EB] bg-[#EFF6FF] border-[#DBEAFE]"
+                  title="Pedir al PM que analice utilidad, prioridad y tiempo estimado"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {isEvaluating ? 'Evaluando...' : 'Evaluar con PM'}
+                </ProcrastinatorButton>
+              </ProcrastinatorBox>
+            </div>
+
+            <div>
+              <label className={styles.input.label}>Detalles o Criterios (opcional)</label>
+              <textarea
+                placeholder="Qué se necesita exactamente..."
+                value={taskDesc}
+                onChange={e => setTaskDesc(e.target.value)}
+                rows={2}
+                className={styles.input.base}
+              />
+            </div>
+
+            {/* Dictamen del PM */}
+            {evaluation && (
+              <ProcrastinatorBox variant="subtle" className="space-y-2 animate-fadeIn text-xs">
+                <ProcrastinatorBox className="flex items-center justify-between">
+                  <span className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
+                    Dictamen del PM
+                  </span>
+                  <ProcrastinatorBadge variant={evaluation.isUseful ? 'success' : 'warning'}>
+                    {evaluation.isUseful ? '✅ Aporta Valor Real' : '⚠️ Riesgo de Distracción'}
+                  </ProcrastinatorBadge>
+                </ProcrastinatorBox>
+
+                <p className="text-[#475569] leading-relaxed">{evaluation.verdict}</p>
+
+                <ProcrastinatorBox className="flex items-center justify-between pt-2 border-t border-[#E2E8F0] text-slate-600">
+                  <div>
+                    <span>Tiempo según tu velocidad: <strong>{evaluation.estimatedMinutes} min</strong></span>
+                    <span className="mx-2">•</span>
+                    <span>Prioridad: <strong className="capitalize">{evaluation.suggestedPriority}</strong></span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyPMEvaluation}
+                    className="text-[#2563EB] hover:underline font-semibold"
+                  >
+                    Aplicar sugerencias
+                  </button>
+                </ProcrastinatorBox>
+
+                {evaluation.breakdownWarning && (
+                  <div className="p-2 bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] rounded-lg">
+                    {evaluation.breakdownWarning}
+                  </div>
+                )}
+              </ProcrastinatorBox>
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className={styles.input.label}>Tiempo</label>
+                <select
+                  value={taskMinutes}
+                  onChange={e => setTaskMinutes(Number(e.target.value))}
+                  className={styles.input.select}
+                >
+                  <option value={20}>20 min</option>
+                  <option value={30}>30 min</option>
+                  <option value={45}>45 min</option>
+                  <option value={60}>60 min</option>
+                  <option value={90}>90 min</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={styles.input.label}>Prioridad</label>
+                <select
+                  value={taskPriority}
+                  onChange={e => setTaskPriority(e.target.value as Priority)}
+                  className={styles.input.select}
+                >
+                  <option value="low">Baja</option>
+                  <option value="medium">Media</option>
+                  <option value="high">Alta</option>
+                  <option value="urgent">Urgente</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={styles.input.label}>Dificultad</label>
+                <select
+                  value={taskDifficulty}
+                  onChange={e => setTaskDifficulty(e.target.value as Difficulty)}
+                  className={styles.input.select}
+                >
+                  <option value="easy">Fácil</option>
+                  <option value="medium">Media</option>
+                  <option value="hard">Compleja</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
+              <ProcrastinatorButton
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setShowNewTaskPanel(false);
+                  setEvaluation(null);
+                }}
+              >
+                Cancelar
+              </ProcrastinatorButton>
+              <ProcrastinatorButton variant="primary" type="submit">
+                Guardar Tarea
+              </ProcrastinatorButton>
+            </div>
+          </form>
+        </ProcrastinatorBox>
+      )}
 
       {/* Grid de Proyectos */}
       <ProcrastinatorBox className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -268,8 +653,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
               onClick={() => setSelectedProjectId(isSelected ? 'all' : proj.id)}
               className={`p-5 rounded-xl border transition-all cursor-pointer ${
                 isSelected
-                  ? 'bg-white border-[#2563EB] ring-2 ring-[#2563EB]/10 shadow-sm'
-                  : 'bg-white border-[#E2E8F0] hover:border-[#CBD5E1] shadow-sm'
+                  ? 'bg-white border-[#2563EB] ring-2 ring-[#2563EB]/10'
+                  : 'bg-white border-[#E2E8F0] hover:border-[#CBD5E1]'
               }`}
             >
               <ProcrastinatorBox className="flex items-start justify-between gap-2 mb-2">
@@ -407,357 +792,6 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
           )}
         </ProcrastinatorBox>
       </ProcrastinatorBox>
-
-      {/* MODAL 1: NUEVA TAREA CON EVALUADOR DEL PM */}
-      {showNewTaskModal && (
-        <ProcrastinatorBox className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <ProcrastinatorBox variant="card" className="w-full max-w-lg shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <ProcrastinatorBox className="flex items-center justify-between">
-              <ProcrastinatorText variant="h2">Nueva Tarea con Revisión del PM</ProcrastinatorText>
-              <button onClick={() => setShowNewTaskModal(false)} className="text-[#94A3B8] hover:text-[#0F172A]">✕</button>
-            </ProcrastinatorBox>
-
-            <form onSubmit={handleCreateTask} className="space-y-4">
-              <div>
-                <label className={styles.input.label}>Proyecto</label>
-                <select
-                  value={taskProject}
-                  onChange={e => setTaskProject(e.target.value)}
-                  className={styles.input.select}
-                >
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={styles.input.label}>Título de la Tarea</label>
-                <ProcrastinatorBox className="flex gap-2">
-                  <ProcrastinatorInput
-                    type="text"
-                    placeholder="Ej. Implementar caché Redis para la API..."
-                    value={taskTitle}
-                    onChange={e => setTaskTitle(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                  <ProcrastinatorButton
-                    type="button"
-                    variant="secondary"
-                    onClick={handleEvaluateTask}
-                    disabled={!taskTitle.trim() || isEvaluating}
-                    className="flex-shrink-0 text-[#2563EB] bg-[#EFF6FF] border-[#DBEAFE]"
-                    title="Pedir al PM que analice utilidad, prioridad y tiempo estimado"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {isEvaluating ? 'Evaluando...' : 'Evaluar con PM'}
-                  </ProcrastinatorButton>
-                </ProcrastinatorBox>
-              </div>
-
-              <div>
-                <label className={styles.input.label}>Detalles o Criterios (opcional)</label>
-                <textarea
-                  placeholder="Qué se necesita exactamente..."
-                  value={taskDesc}
-                  onChange={e => setTaskDesc(e.target.value)}
-                  rows={2}
-                  className={styles.input.base}
-                />
-              </div>
-
-              {/* Tarjeta de Veredicto del PM */}
-              {evaluation && (
-                <ProcrastinatorBox variant="subtle" className="space-y-2 animate-fadeIn text-xs">
-                  <ProcrastinatorBox className="flex items-center justify-between">
-                    <span className="font-bold text-[#0F172A] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
-                      Dictamen del PM
-                    </span>
-                    <ProcrastinatorBadge variant={evaluation.isUseful ? 'success' : 'warning'}>
-                      {evaluation.isUseful ? '✅ Aporta Valor Real' : '⚠️ Riesgo de Distracción'}
-                    </ProcrastinatorBadge>
-                  </ProcrastinatorBox>
-
-                  <p className="text-[#475569] leading-relaxed">{evaluation.verdict}</p>
-
-                  <ProcrastinatorBox className="flex items-center justify-between pt-2 border-t border-[#E2E8F0] text-slate-600">
-                    <div>
-                      <span>Tiempo según tu velocidad: <strong>{evaluation.estimatedMinutes} min</strong></span>
-                      <span className="mx-2">•</span>
-                      <span>Prioridad: <strong className="capitalize">{evaluation.suggestedPriority}</strong></span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleApplyPMEvaluation}
-                      className="text-[#2563EB] hover:underline font-semibold"
-                    >
-                      Aplicar sugerencias
-                    </button>
-                  </ProcrastinatorBox>
-
-                  {evaluation.breakdownWarning && (
-                    <div className="p-2 bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] rounded-lg">
-                      {evaluation.breakdownWarning}
-                    </div>
-                  )}
-                </ProcrastinatorBox>
-              )}
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className={styles.input.label}>Tiempo</label>
-                  <select
-                    value={taskMinutes}
-                    onChange={e => setTaskMinutes(Number(e.target.value))}
-                    className={styles.input.select}
-                  >
-                    <option value={20}>20 min</option>
-                    <option value={30}>30 min</option>
-                    <option value={45}>45 min</option>
-                    <option value={60}>60 min</option>
-                    <option value={90}>90 min</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className={styles.input.label}>Prioridad</label>
-                  <select
-                    value={taskPriority}
-                    onChange={e => setTaskPriority(e.target.value as Priority)}
-                    className={styles.input.select}
-                  >
-                    <option value="low">Baja</option>
-                    <option value="medium">Media</option>
-                    <option value="high">Alta</option>
-                    <option value="urgent">Urgente</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className={styles.input.label}>Dificultad</label>
-                  <select
-                    value={taskDifficulty}
-                    onChange={e => setTaskDifficulty(e.target.value as Difficulty)}
-                    className={styles.input.select}
-                  >
-                    <option value="easy">Fácil</option>
-                    <option value="medium">Media</option>
-                    <option value="hard">Compleja</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
-                <ProcrastinatorButton
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowNewTaskModal(false)}
-                >
-                  Cancelar
-                </ProcrastinatorButton>
-                <ProcrastinatorButton variant="primary" type="submit">
-                  Guardar Tarea
-                </ProcrastinatorButton>
-              </div>
-            </form>
-          </ProcrastinatorBox>
-        </ProcrastinatorBox>
-      )}
-
-      {/* MODAL 2: NUEVO PROYECTO CON ASISTENTE DE DESGLOSE Y CONVERSACIÓN */}
-      {showNewProjectModal && (
-        <ProcrastinatorBox className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <ProcrastinatorBox variant="card" className="w-full max-w-2xl shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <ProcrastinatorBox className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
-              <ProcrastinatorBox className="flex items-center gap-2">
-                <FolderKanban className="w-5 h-5 text-[#2563EB]" />
-                <ProcrastinatorText variant="h2">
-                  {projectStep === 1 ? 'Nuevo Proyecto' : `Desglose & Ajuste: ${newProjName}`}
-                </ProcrastinatorText>
-              </ProcrastinatorBox>
-              <button onClick={() => setShowNewProjectModal(false)} className="text-[#94A3B8] hover:text-[#0F172A]">✕</button>
-            </ProcrastinatorBox>
-
-            {/* PASO 1: Datos básicos y disparo de IA */}
-            {projectStep === 1 && (
-              <div className="space-y-4">
-                <div>
-                  <ProcrastinatorInput
-                    label="Nombre del Proyecto"
-                    type="text"
-                    placeholder="Ej. App de Facturación Simple, Bot de Scraping..."
-                    value={newProjName}
-                    onChange={e => setNewProjName(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                <div>
-                  <label className={styles.input.label}>Descripción / Qué quieres construir</label>
-                  <textarea
-                    placeholder="Describe las funcionalidades clave, tecnologías que quieres usar o qué problema resuelve..."
-                    value={newProjDesc}
-                    onChange={e => setNewProjDesc(e.target.value)}
-                    rows={3}
-                    className={styles.input.base}
-                  />
-                </div>
-
-                <div>
-                  <ProcrastinatorInput
-                    label="Meta aproximada de horas"
-                    type="number"
-                    value={newProjHours}
-                    onChange={e => setNewProjHours(Number(e.target.value))}
-                    min={5}
-                    max={200}
-                  />
-                </div>
-
-                <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await api.createProject({
-                        name: newProjName.trim(),
-                        description: newProjDesc.trim(),
-                        color: '#2563EB',
-                        targetHours: newProjHours,
-                        status: 'active'
-                      });
-                      setShowNewProjectModal(false);
-                      onRefreshData();
-                    }}
-                    disabled={!newProjName.trim()}
-                    className="text-xs text-[#64748B] hover:text-[#0F172A] hover:underline"
-                  >
-                    Crear vacío sin tareas
-                  </button>
-
-                  <ProcrastinatorButton
-                    type="button"
-                    variant="primary"
-                    onClick={handleStartProjectRoadmap}
-                    disabled={!newProjName.trim() || isGeneratingRoadmap}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>{isGeneratingRoadmap ? 'Desglosando proyecto con IA...' : 'Desglosar y Planificar Tareas con PM'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </ProcrastinatorButton>
-                </div>
-              </div>
-            )}
-
-            {/* PASO 2: Lista de tareas propuestas con edición directa y chat conversacional */}
-            {projectStep === 2 && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-xs text-[#64748B]">
-                  <span>El PM propone <strong>{proposedTasks.length} micro-tareas</strong>. Puedes editarlas o conversar para modificarlas:</span>
-                </div>
-
-                {/* Lista de tareas propuestas (editables directamente) */}
-                <div className="space-y-2 max-h-56 overflow-y-auto border border-[#E2E8F0] rounded-xl p-2 bg-[#F8FAFC]">
-                  {proposedTasks.map((t, idx) => (
-                    <div key={t.id} className="p-2.5 bg-white border border-[#E2E8F0] rounded-lg flex items-center justify-between gap-2 text-xs">
-                      <span className="font-mono text-[#94A3B8] font-bold">{idx + 1}.</span>
-                      <input
-                        type="text"
-                        value={t.title}
-                        onChange={e => handleUpdateProposedTask(t.id, 'title', e.target.value)}
-                        className="flex-1 bg-transparent border-b border-transparent hover:border-[#CBD5E1] focus:border-[#2563EB] focus:outline-none font-medium text-[#0F172A] px-1 py-0.5"
-                      />
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <input
-                          type="number"
-                          value={t.estimatedMinutes}
-                          onChange={e => handleUpdateProposedTask(t.id, 'estimatedMinutes', Number(e.target.value))}
-                          className="w-14 bg-[#F1F5F9] border border-[#E2E8F0] rounded px-1.5 py-0.5 text-center font-mono"
-                          title="Minutos"
-                        />
-                        <span className="text-[#94A3B8]">m</span>
-                        <button
-                          onClick={() => handleDeleteProposedTask(t.id)}
-                          className="p-1 text-[#94A3B8] hover:text-[#DC2626] rounded"
-                          title="Quitar tarea"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Mini Chat con el PM para ajustar el desglose */}
-                <div className="border border-[#E2E8F0] rounded-xl p-3 bg-white space-y-2">
-                  <div className="text-xs font-semibold text-[#0F172A] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
-                    Conversar con el PM para afinar las tareas:
-                  </div>
-
-                  <div className="space-y-2 max-h-32 overflow-y-auto text-xs">
-                    {refineMessages.map((m, i) => (
-                      <div
-                        key={i}
-                        className={`p-2 rounded-lg ${
-                          m.role === 'user'
-                            ? 'bg-[#EFF6FF] text-[#1D4ED8] ml-6'
-                            : 'bg-[#F8FAFC] border border-[#E2E8F0] text-[#334155] mr-6'
-                        }`}
-                      >
-                        {m.text}
-                      </div>
-                    ))}
-                    {isRefining && (
-                      <div className="text-xs text-[#64748B] italic">Ajustando tareas con el PM...</div>
-                    )}
-                  </div>
-
-                  <form onSubmit={handleRefineRoadmap} className="flex gap-2">
-                    <ProcrastinatorInput
-                      type="text"
-                      placeholder="Ej: 'Quita los pagos y pon login con Google', 'Hazlas de 25 min máximo'..."
-                      value={refineInput}
-                      onChange={e => setRefineInput(e.target.value)}
-                      disabled={isRefining}
-                    />
-                    <ProcrastinatorButton
-                      type="submit"
-                      variant="primary"
-                      disabled={!refineInput.trim() || isRefining}
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                    </ProcrastinatorButton>
-                  </form>
-                </div>
-
-                <div className="flex justify-between items-center pt-3 border-t border-[#E2E8F0]">
-                  <ProcrastinatorButton
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setProjectStep(1)}
-                  >
-                    Atrás
-                  </ProcrastinatorButton>
-
-                  <ProcrastinatorButton
-                    type="button"
-                    variant="success"
-                    onClick={handleConfirmProject}
-                    disabled={proposedTasks.length === 0}
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Crear Proyecto y Guardar {proposedTasks.length} Tareas en el Backlog</span>
-                  </ProcrastinatorButton>
-                </div>
-              </div>
-            )}
-          </ProcrastinatorBox>
-        </ProcrastinatorBox>
-      )}
     </ProcrastinatorBox>
   );
 };

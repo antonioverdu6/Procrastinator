@@ -190,13 +190,31 @@ def calculate_stats() -> Dict[str, Any]:
         day_tasks = [t for t in all_tasks if (t['completedAt'] and t['completedAt'].startswith(d_str)) or (t['scheduledDate'] == d_str)]
         planned_m = today_planned_minutes if d_str == today else int(round(settings['defaultDailyHours'] * 60))
         actual_m = sum(t['actualMinutes'] for t in day_tasks)
+        pct = min(150, int(round((actual_m / planned_m * 100)))) if planned_m > 0 else (100 if actual_m > 0 else 0)
 
         weekly_activity.append({
             'date': d_str,
             'dayName': d_name,
             'plannedHours': round(planned_m / 60, 1),
-            'actualHours': round(actual_m / 60, 1)
+            'actualHours': round(actual_m / 60, 1),
+            'completionPercent': pct,
+            'tasksCount': len(day_tasks)
         })
+
+    # Distribución por prioridad
+    priority_distribution = [
+        {'priority': 'urgent', 'label': 'Urgente', 'count': len([t for t in all_tasks if t['priority'] == 'urgent']), 'color': '#DC2626'},
+        {'priority': 'high', 'label': 'Alta', 'count': len([t for t in all_tasks if t['priority'] == 'high']), 'color': '#D97706'},
+        {'priority': 'medium', 'label': 'Media', 'count': len([t for t in all_tasks if t['priority'] == 'medium']), 'color': '#2563EB'},
+        {'priority': 'low', 'label': 'Baja', 'count': len([t for t in all_tasks if t['priority'] == 'low']), 'color': '#64748B'},
+    ]
+
+    # Distribución por dificultad
+    difficulty_distribution = [
+        {'difficulty': 'easy', 'label': 'Fácil', 'count': len([t for t in all_tasks if t['difficulty'] == 'easy']), 'color': '#16A34A'},
+        {'difficulty': 'medium', 'label': 'Media', 'count': len([t for t in all_tasks if t['difficulty'] == 'medium']), 'color': '#2563EB'},
+        {'difficulty': 'hard', 'label': 'Compleja', 'count': len([t for t in all_tasks if t['difficulty'] == 'hard']), 'color': '#9333EA'},
+    ]
 
     # Progreso de proyectos
     project_progress = []
@@ -235,5 +253,7 @@ def calculate_stats() -> Dict[str, Any]:
         'totalTasksFinished': total_finished,
         'accuracyRatio': accuracy_ratio,
         'weeklyActivity': weekly_activity,
-        'projectProgress': project_progress
+        'projectProgress': project_progress,
+        'priorityDistribution': priority_distribution,
+        'difficultyDistribution': difficulty_distribution
     }

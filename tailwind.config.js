@@ -6,6 +6,17 @@ export default {
   ],
   darkMode: 'class',
   theme: {
+    // Diseño 100% plano sin sombras: se desactivan todas las sombras de Tailwind
+    boxShadow: {
+      none: 'none',
+      sm: 'none',
+      DEFAULT: 'none',
+      md: 'none',
+      lg: 'none',
+      xl: 'none',
+      '2xl': 'none',
+      inner: 'none',
+    },
     extend: {
       colors: {
         dark: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, Pause, CheckCircle2, Coffee, AlertCircle, Sparkles, CheckSquare, Square, ChevronDown, ChevronUp, FileCode } from 'lucide-react';
 import { Task, Project, TaskActionPlan } from '../../types';
 import { api } from '../../services/api';
@@ -14,11 +14,43 @@ interface TimerProps {
   onTimeLogged: (taskId: string, additionalMinutes: number) => void;
 }
 
+const TIMER_STORAGE_KEY = 'procrastinator_timer_session';
+
+interface PersistedTimerState {
+  taskId: string;
+  isRunning: boolean;
+  startTimestamp: number | null;
+  accumulatedSeconds: number;
+  mode: 'focus' | 'break';
+  lastUpdated: number;
+}
+
+const loadTimerState = (taskId: string): PersistedTimerState | null => {
+  try {
+    const raw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedTimerState;
+    if (parsed.taskId !== taskId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const saveTimerState = (state: PersistedTimerState) => {
+  try {
+    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore localStorage write errors
+  }
+};
+
 export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, onTimeLogged }) => {
   const [isRunning, setIsRunning] = useState(false);
+  const [startTimestamp, setStartTimestamp] = useState<number | null>(null);
+  const [accumulatedSeconds, setAccumulatedSeconds] = useState(0);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
-  const timerRef = useRef<number | null>(null);
 
   // Estados de la Guía de Acción generada por IA
   const [plan, setPlan] = useState<TaskActionPlan | null>(null);
@@ -29,52 +61,128 @@ export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, on
   const targetSeconds = (task.estimatedMinutes || 30) * 60;
   const isOvertime = mode === 'focus' && secondsElapsed > targetSeconds;
 
+  // Restaurar estado persistido al cambiar de tarea o al montar el componente
   useEffect(() => {
-    setIsRunning(false);
-    setSecondsElapsed(0);
-    setMode('focus');
-    setPlan(null);
-    setShowPlan(false);
-    setCheckedSteps({});
+    const saved = loadTimerState(task.id);
+    if (saved) {
+      let currentSeconds = saved.accumulatedSeconds;
+      if (saved.isRunning && saved.startTimestamp) {
+        const diff = Math.max(0, Math.floor((Date.now() - saved.startTimestamp) / 1000));
+        currentSeconds += diff;
+      }
+      setIsRunning(saved.isRunning);
+      setStartTimestamp(saved.startTimestamp);
+      setAccumulatedSeconds(saved.accumulatedSeconds);
+      setSecondsElapsed(currentSeconds);
+      setMode(saved.mode);
+    } else {
+      setIsRunning(false);
+      setStartTimestamp(null);
+      setAccumulatedSeconds(0);
+      setSecondsElapsed(0);
+      setMode('focus');
+      setPlan(null);
+      setShowPlan(false);
+      setCheckedSteps({});
+    }
   }, [task.id]);
 
+  // Tick periódico basado en marcas de tiempo reales (impermeable a throttling o cambio de pestaña)
   useEffect(() => {
-    if (isRunning) {
-      timerRef.current = window.setInterval(() => {
-        setSecondsElapsed(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
+    if (!isRunning || !startTimestamp) return;
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+    const tick = () => {
+      const diff = Math.max(0, Math.floor((Date.now() - startTimestamp) / 1000));
+      setSecondsElapsed(accumulatedSeconds + diff);
     };
-  }, [isRunning]);
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [isRunning, startTimestamp, accumulatedSeconds]);
 
   const handleTogglePlay = () => {
-    setIsRunning(!isRunning);
+    if (isRunning) {
+      // Pausar
+      const diff = startTimestamp ? Math.max(0, Math.floor((Date.now() - startTimestamp) / 1000)) : 0;
+      const total = accumulatedSeconds + diff;
+      setIsRunning(false);
+      setStartTimestamp(null);
+      setAccumulatedSeconds(total);
+      setSecondsElapsed(total);
+
+      saveTimerState({
+        taskId: task.id,
+        isRunning: false,
+        startTimestamp: null,
+        accumulatedSeconds: total,
+        mode,
+        lastUpdated: Date.now()
+      });
+    } else {
+      // Iniciar / Reanudar
+      const now = Date.now();
+      setIsRunning(true);
+      setStartTimestamp(now);
+
+      saveTimerState({
+        taskId: task.id,
+        isRunning: true,
+        startTimestamp: now,
+        accumulatedSeconds,
+        mode,
+        lastUpdated: now
+      });
+    }
   };
 
   const handleComplete = () => {
     setIsRunning(false);
-    const minutesToAdd = Math.max(1, Math.round(secondsElapsed / 60));
+    const finalSeconds = isRunning && startTimestamp
+      ? accumulatedSeconds + Math.max(0, Math.floor((Date.now() - startTimestamp) / 1000))
+      : secondsElapsed;
+
+    const minutesToAdd = Math.max(1, Math.round(finalSeconds / 60));
     onTimeLogged(task.id, minutesToAdd);
     onTaskCompleted(task.id);
+
+    try {
+      localStorage.removeItem(TIMER_STORAGE_KEY);
+    } catch {
+      // Ignore
+    }
+
+    setStartTimestamp(null);
+    setAccumulatedSeconds(0);
     setSecondsElapsed(0);
   };
 
   const handleSwitchBreak = () => {
+    const finalSeconds = isRunning && startTimestamp
+      ? accumulatedSeconds + Math.max(0, Math.floor((Date.now() - startTimestamp) / 1000))
+      : secondsElapsed;
+
     setIsRunning(false);
+    setStartTimestamp(null);
+    setAccumulatedSeconds(0);
+    setSecondsElapsed(0);
+
+    const nextMode = mode === 'focus' ? 'break' : 'focus';
+    setMode(nextMode);
+
     if (mode === 'focus') {
-      const minutesToAdd = Math.round(secondsElapsed / 60);
+      const minutesToAdd = Math.round(finalSeconds / 60);
       if (minutesToAdd > 0) onTimeLogged(task.id, minutesToAdd);
-      setMode('break');
-      setSecondsElapsed(0);
-    } else {
-      setMode('focus');
-      setSecondsElapsed(0);
     }
+
+    saveTimerState({
+      taskId: task.id,
+      isRunning: false,
+      startTimestamp: null,
+      accumulatedSeconds: 0,
+      mode: nextMode,
+      lastUpdated: Date.now()
+    });
   };
 
   const handleFetchActionPlan = async () => {
