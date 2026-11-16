@@ -32,105 +32,161 @@ export type BoxVariant =
 
 export interface ProcrastinatorBoxProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: BoxVariant;
+  shadow?: 'yes' | 'no' | 'soft';
+  border?: 'none' | 'subtle' | 'strong' | 'active';
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  gap?: 'none' | 'xs' | 'sm' | 'md' | 'lg';
+  direction?: 'row' | 'col';
+  align?: 'start' | 'center' | 'end';
+  justify?: 'between' | 'start' | 'end' | 'center';
+  wrap?: boolean;
   as?: React.ElementType;
 }
 
 /**
  * Componente primitivo estático base de Procrastinator.
- * Consume exclusivamente los estilos predefinidos en styles.box y styles.card.
+ * Totalmente guiado por propiedades tipadas (variant, shadow, border, padding, flex...).
+ * Elimina la necesidad de concatenar classNames arbitrarios.
  */
 export const ProcrastinatorBox = forwardRef<HTMLDivElement, ProcrastinatorBoxProps>(
-  ({ variant = 'default', as: Component = 'div', className = '', children, ...props }, ref) => {
-    let baseStyles = '';
+  (
+    {
+      variant = 'default',
+      shadow,
+      border,
+      padding,
+      gap,
+      direction,
+      align,
+      justify,
+      wrap,
+      as: Component = 'div',
+      className = '',
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    let classes: string[] = [];
 
+    // Variante base
     switch (variant) {
       case 'canvas':
-        baseStyles = styles.layout.main;
+        classes.push(styles.layout.main);
         break;
       case 'page':
-        baseStyles = styles.box.page;
+        classes.push(styles.box.page);
         break;
       case 'header':
-        baseStyles = styles.box.header;
+        classes.push(styles.box.header);
         break;
       case 'card':
-        baseStyles = styles.card.base;
+        classes.push(styles.card.base);
         break;
       case 'card-interactive':
-        baseStyles = styles.card.interactive;
+        classes.push(styles.card.interactive);
         break;
       case 'card-selected':
-        baseStyles = styles.card.selected;
+        classes.push(styles.card.selected);
         break;
       case 'subtle':
-        baseStyles = styles.card.subtle;
+        classes.push(styles.card.subtle);
         break;
       case 'row':
-        baseStyles = styles.box.row;
+        classes.push(styles.box.row);
         break;
       case 'row-wrap':
-        baseStyles = styles.box.rowWrap;
+        classes.push(styles.box.rowWrap);
         break;
       case 'row-between':
-        baseStyles = styles.box.rowBetween;
+        classes.push(styles.box.rowBetween);
         break;
       case 'row-end':
-        baseStyles = styles.box.rowEnd;
+        classes.push(styles.box.rowEnd);
         break;
       case 'stack':
-        baseStyles = styles.box.stack;
+        classes.push(styles.box.stack);
         break;
       case 'stack-sm':
-        baseStyles = styles.box.stackSm;
+        classes.push(styles.box.stackSm);
         break;
       case 'grid-2':
-        baseStyles = styles.box.grid2;
+        classes.push(styles.box.grid2);
         break;
       case 'grid-3':
-        baseStyles = styles.box.grid3;
+        classes.push(styles.box.grid3);
         break;
       case 'grid-4':
-        baseStyles = styles.box.grid4;
+        classes.push(styles.box.grid4);
         break;
       case 'list':
-        baseStyles = styles.box.list;
+        classes.push(styles.box.list);
         break;
       case 'list-item':
-        baseStyles = styles.box.listItem;
+        classes.push(styles.box.listItem);
         break;
       case 'list-item-active':
-        baseStyles = styles.box.listItemActive;
+        classes.push(styles.box.listItemActive);
         break;
       case 'modal-overlay':
-        baseStyles = styles.box.modalOverlay;
+        classes.push(styles.box.modalOverlay);
         break;
       case 'modal-card':
-        baseStyles = styles.box.modalCard;
+        classes.push(styles.box.modalCard);
         break;
       case 'modal-card-wide':
-        baseStyles = styles.box.modalCardWide;
+        classes.push(styles.box.modalCardWide);
         break;
       case 'modal-card-sm':
-        baseStyles = styles.box.modalCardSm;
+        classes.push(styles.box.modalCardSm);
         break;
       case 'chat-container':
-        baseStyles = styles.box.chatContainer;
+        classes.push(styles.box.chatContainer);
         break;
       case 'chat-messages':
-        baseStyles = styles.box.chatMessages;
+        classes.push(styles.box.chatMessages);
         break;
       case 'chat-input-bar':
-        baseStyles = styles.box.chatInputBar;
+        classes.push(styles.box.chatInputBar);
         break;
       default:
-        baseStyles = '';
         break;
+    }
+
+    // Propiedades explícitas adicionales
+    if (shadow && styles.props.shadow[shadow]) {
+      classes.push(styles.props.shadow[shadow]);
+    }
+    if (border && styles.props.border[border]) {
+      classes.push(styles.props.border[border]);
+    }
+    if (padding && styles.props.padding[padding]) {
+      classes.push(styles.props.padding[padding]);
+    }
+    if (gap && styles.props.gap[gap]) {
+      classes.push(styles.props.gap[gap]);
+    }
+    if (direction && styles.props.direction[direction]) {
+      classes.push(styles.props.direction[direction]);
+    }
+    if (align && styles.props.align[align]) {
+      classes.push(styles.props.align[align]);
+    }
+    if (justify && styles.props.justify[justify]) {
+      classes.push(styles.props.justify[justify]);
+    }
+    if (wrap) {
+      classes.push('flex-wrap');
+    }
+
+    if (className) {
+      classes.push(className);
     }
 
     return (
       <Component
         ref={ref}
-        className={className ? `${baseStyles} ${className}`.trim() : baseStyles}
+        className={classes.join(' ').trim()}
         {...props}
       >
         {children}

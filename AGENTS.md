@@ -36,7 +36,8 @@ Este archivo define las directrices y estándares estrictos que cualquier asiste
   - Si se añade una nueva variante de estilo, debe registrarse en `src/style.js` y tiparse en `src/style.d.ts`.
 - **Componentes Primitivos Estáticos (Obligatorios)**:
   - En lugar de usar elementos HTML genéricos como `<div>`, `<button>`, `<span>` o `<p>` con clases sueltas repetidas, se debe emplear el sistema de primitivos armonizados:
-    - `<ProcrastinatorBox>` (el "div-procrastinator" con variantes predefinidas en `src/style.js`: `page`, `header`, `card`, `card-interactive`, `card-selected`, `subtle`, `row`, `row-between`, `stack`, `stack-sm`, `grid-2`, `grid-3`, `grid-4`, `list`, `list-item`, `modal-overlay`, `modal-card`, etc. Prohibido añadir strings ad-hoc de clases de layout dentro de `className`).
+    - `<ProcrastinatorBox>` (el "div-procrastinator" con propiedades tipadas: `variant`, `shadow="no"|"yes"|"soft"`, `border`, `padding`, `gap`, `direction`, `align`, `justify`. Prohibido añadir strings ad-hoc de clases de layout dentro de `className`).
+    - `<ProcrastinatorModal>` (modal/popover estándar con propiedades tipadas `size`, `shadow="no"|"soft"|"yes"`, `title`, `icon`, garantizando bordes nítidos sin sombras raras).
     - `<ProcrastinatorButton>` (variantes `primary`, `secondary`, `ghost`, `success`, `danger`).
     - `<ProcrastinatorBadge>` (variantes `primary`, `success`, `warning`, `danger`, `neutral`).
     - `<ProcrastinatorInput>` y `<ProcrastinatorText>`.

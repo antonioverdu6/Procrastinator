@@ -37,6 +37,47 @@ export interface StyleTokens {
     main: string;
     header: string;
   };
+  props: {
+    shadow: {
+      no: string;
+      yes: string;
+      soft: string;
+    };
+    border: {
+      none: string;
+      subtle: string;
+      strong: string;
+      active: string;
+    };
+    padding: {
+      none: string;
+      sm: string;
+      md: string;
+      lg: string;
+    };
+    gap: {
+      none: string;
+      xs: string;
+      sm: string;
+      md: string;
+      lg: string;
+    };
+    direction: {
+      row: string;
+      col: string;
+    };
+    align: {
+      start: string;
+      center: string;
+      end: string;
+    };
+    justify: {
+      start: string;
+      center: string;
+      end: string;
+      between: string;
+    };
+  };
   box: {
     page: string;
     header: string;

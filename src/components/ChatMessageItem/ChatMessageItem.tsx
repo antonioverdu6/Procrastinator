@@ -21,8 +21,8 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       <ProcrastinatorBox
         className={`max-w-[85%] rounded-lg p-3.5 text-xs leading-relaxed ${
           isUser
-            ? 'bg-[#2563EB] text-white shadow-xs'
-            : 'bg-white border border-[#E2E8F0] text-[#334155] shadow-xs'
+            ? 'bg-[#2563EB] text-white'
+            : 'bg-white border border-[#E2E8F0] text-[#334155]'
         }`}
       >
         <div className="whitespace-pre-wrap">{message.content}</div>

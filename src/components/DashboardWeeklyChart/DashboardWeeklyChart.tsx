@@ -58,9 +58,9 @@ export const DashboardWeeklyChart: React.FC<DashboardWeeklyChartProps> = ({ data
             <Tooltip
               contentStyle={{
                 backgroundColor: '#FFFFFF',
-                borderColor: '#E2E8F0',
+                borderColor: '#CBD5E1',
                 borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+                boxShadow: 'none',
                 fontSize: '12px'
               }}
             />
