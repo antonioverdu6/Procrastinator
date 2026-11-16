@@ -49,10 +49,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <ProcrastinatorBox className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <ProcrastinatorBox variant="card" className="w-full max-w-lg shadow-xl space-y-5 max-h-[90vh] overflow-y-auto">
-        <ProcrastinatorBox className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-          <ProcrastinatorBox className="flex items-center gap-2">
+    <ProcrastinatorBox variant="modal-overlay">
+      <ProcrastinatorBox variant="modal-card">
+        <ProcrastinatorBox variant="row-between" className="pb-3 border-b border-[#E2E8F0]">
+          <ProcrastinatorBox variant="row">
             <Settings className="w-5 h-5 text-[#2563EB]" />
             <ProcrastinatorText variant="h2">Configuración</ProcrastinatorText>
           </ProcrastinatorBox>
@@ -66,7 +66,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4 text-sm">
           {/* Capacidad Diaria */}
-          <ProcrastinatorBox>
+          <ProcrastinatorBox variant="stack-sm">
             <label className={styles.input.label}>Capacidad Diaria Habitual</label>
             <ProcrastinatorText variant="caption" className="mb-1.5 block">
               Horas que dedicas normalmente al día a tus desarrollos.
@@ -86,7 +86,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </ProcrastinatorBox>
 
           {/* Proveedor de IA */}
-          <ProcrastinatorBox>
+          <ProcrastinatorBox variant="stack-sm">
             <label className={styles.input.label}>Proveedor de IA</label>
             <select
               value={form.aiProvider}
@@ -100,25 +100,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </ProcrastinatorBox>
 
           {/* API Key */}
-          <ProcrastinatorBox>
-            <ProcrastinatorBox className="flex items-center justify-between mb-1">
-              <label className={styles.input.label}>API Key</label>
+          <ProcrastinatorBox variant="stack-sm">
+            <ProcrastinatorBox variant="row-between">
+              <label className={styles.input.label}>Clave de API ({form.aiProvider.toUpperCase()})</label>
               <a
                 href={getProviderDocLink()}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-[#2563EB] hover:underline flex items-center gap-1"
               >
-                Obtener clave <ExternalLink className="w-3 h-3" />
+                <span>Obtener clave gratis</span>
+                <ExternalLink className="w-3 h-3" />
               </a>
             </ProcrastinatorBox>
+
             <div className="relative">
-              <input
+              <ProcrastinatorInput
                 type={showKey ? 'text' : 'password'}
-                placeholder={`Introduce tu clave de ${form.aiProvider.toUpperCase()}...`}
-                value={form.apiKey}
+                placeholder="Pega tu clave (ej. AIzaSy...)"
+                value={form.apiKey || ''}
                 onChange={e => setForm({ ...form, apiKey: e.target.value })}
-                className={`${styles.input.base} pr-10`}
               />
               <button
                 type="button"
@@ -128,38 +129,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-[11px] text-[#94A3B8] mt-1">
-              Se almacena únicamente de manera local en tu máquina.
-            </p>
+            <ProcrastinatorText variant="caption">
+              Tu clave se guarda localmente en tu base de datos SQLite y nunca sale de tu ordenador. Si la dejas vacía, la app funcionará con el copiloto técnico offline.
+            </ProcrastinatorText>
           </ProcrastinatorBox>
 
-          {/* Tono */}
-          <ProcrastinatorBox>
-            <label className={styles.input.label}>Exigencia del Copiloto</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'gentle', label: 'Empático' },
-                { id: 'balanced', label: 'Equilibrado' },
-                { id: 'tough_love', label: 'Exigente' }
-              ].map(t => (
-                <button
-                  type="button"
-                  key={t.id}
-                  onClick={() => setForm({ ...form, strictness: t.id as any })}
-                  className={`py-2 px-3 rounded-lg border text-xs font-medium transition-colors ${
-                    form.strictness === t.id
-                      ? 'bg-[#EFF6FF] border-[#2563EB] text-[#2563EB]'
-                      : 'bg-white border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+          {/* Estilo del Copiloto */}
+          <ProcrastinatorBox variant="stack-sm">
+            <label className={styles.input.label}>Tono del Copiloto</label>
+            <select
+              value={form.strictness}
+              onChange={e => setForm({ ...form, strictness: e.target.value as any })}
+              className={styles.input.select}
+            >
+              <option value="gentle">Comprensivo y paciente</option>
+              <option value="balanced">Equilibrado y realista (Recomendado)</option>
+              <option value="tough_love">Estricto / Directo (Cero excusas)</option>
+            </select>
           </ProcrastinatorBox>
 
           {/* Botones */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#E2E8F0]">
+          <ProcrastinatorBox variant="row-end" className="pt-4 border-t border-[#E2E8F0]">
             <ProcrastinatorButton
               type="button"
               variant="ghost"
@@ -167,14 +157,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               Cancelar
             </ProcrastinatorButton>
+
             <ProcrastinatorButton
               type="submit"
-              variant="primary"
+              variant={justSaved ? 'success' : 'primary'}
             >
-              {justSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              <span>{justSaved ? 'Guardado' : 'Guardar Ajustes'}</span>
+              {justSaved ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>¡Guardado!</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Guardar Ajustes</span>
+                </>
+              )}
             </ProcrastinatorButton>
-          </div>
+          </ProcrastinatorBox>
         </form>
       </ProcrastinatorBox>
     </ProcrastinatorBox>

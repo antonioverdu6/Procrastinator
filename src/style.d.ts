@@ -1,4 +1,4 @@
-export declare const colors: {
+export interface ColorTokens {
   bg: {
     canvas: string;
     card: string;
@@ -29,17 +29,41 @@ export declare const colors: {
     dangerLight: string;
     slate: string;
   };
-};
+}
 
-export declare const styles: {
+export interface StyleTokens {
   layout: {
     container: string;
     main: string;
     header: string;
   };
+  box: {
+    page: string;
+    header: string;
+    row: string;
+    rowWrap: string;
+    rowBetween: string;
+    rowEnd: string;
+    stack: string;
+    stackSm: string;
+    grid2: string;
+    grid3: string;
+    grid4: string;
+    list: string;
+    listItem: string;
+    listItemActive: string;
+    modalOverlay: string;
+    modalCard: string;
+    modalCardWide: string;
+    modalCardSm: string;
+    chatContainer: string;
+    chatMessages: string;
+    chatInputBar: string;
+  };
   card: {
     base: string;
     interactive: string;
+    selected: string;
     subtle: string;
   };
   button: {
@@ -70,4 +94,7 @@ export declare const styles: {
     body: string;
     caption: string;
   };
-};
+}
+
+export const colors: ColorTokens;
+export const styles: StyleTokens;

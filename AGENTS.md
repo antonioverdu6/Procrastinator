@@ -36,7 +36,7 @@ Este archivo define las directrices y estándares estrictos que cualquier asiste
   - Si se añade una nueva variante de estilo, debe registrarse en `src/style.js` y tiparse en `src/style.d.ts`.
 - **Componentes Primitivos Estáticos (Obligatorios)**:
   - En lugar de usar elementos HTML genéricos como `<div>`, `<button>`, `<span>` o `<p>` con clases sueltas repetidas, se debe emplear el sistema de primitivos armonizados:
-    - `<ProcrastinatorBox>` (el "div-procrastinator" con variantes `card`, `subtle`, `canvas`, `row`, `stack`).
+    - `<ProcrastinatorBox>` (el "div-procrastinator" con variantes predefinidas en `src/style.js`: `page`, `header`, `card`, `card-interactive`, `card-selected`, `subtle`, `row`, `row-between`, `stack`, `stack-sm`, `grid-2`, `grid-3`, `grid-4`, `list`, `list-item`, `modal-overlay`, `modal-card`, etc. Prohibido añadir strings ad-hoc de clases de layout dentro de `className`).
     - `<ProcrastinatorButton>` (variantes `primary`, `secondary`, `ghost`, `success`, `danger`).
     - `<ProcrastinatorBadge>` (variantes `primary`, `success`, `warning`, `danger`, `neutral`).
     - `<ProcrastinatorInput>` y `<ProcrastinatorText>`.
@@ -44,7 +44,7 @@ Este archivo define las directrices y estándares estrictos que cualquier asiste
 ---
 
 ## 4. Filosofía del Project Manager con IA
-- Toda interacción con LLMs debe centralizarse en [`src/services/aiService.ts`](./src/services/aiService.ts).
+- Toda interacción con LLMs y asistencia técnica reside en el backend en [`backend/app/ai_service.py`](./backend/app/ai_service.py) y se consume de forma desacoplada desde el cliente [`src/services/api.ts`](./src/services/api.ts).
 - **Principios de Asistencia**:
   - **Pragmatismo técnico**: Priorizar soluciones directas de 30-45 minutos frente a sobreingeniería.
   - **Evaluación de utilidad**: Al crear tareas, el PM debe alertar si la tarea huele a procrastinación productiva o no es esencial para el MVP.

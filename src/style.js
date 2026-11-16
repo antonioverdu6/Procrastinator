@@ -48,10 +48,36 @@ export const styles = {
     header: 'bg-white border-b border-[#E2E8F0] sticky top-0 z-30 px-6 py-3',
   },
 
+  // Variantes estructurales de ProcrastinatorBox
+  box: {
+    page: 'space-y-6 animate-fadeIn',
+    header: 'flex flex-col sm:flex-row sm:items-center justify-between gap-4',
+    row: 'flex items-center gap-2',
+    rowWrap: 'flex items-center gap-2 flex-wrap',
+    rowBetween: 'flex items-center justify-between gap-3',
+    rowEnd: 'flex items-center justify-end gap-2',
+    stack: 'flex flex-col gap-3',
+    stackSm: 'flex flex-col gap-1',
+    grid2: 'grid grid-cols-1 md:grid-cols-2 gap-4',
+    grid3: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4',
+    grid4: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4',
+    list: 'divide-y divide-[#F1F5F9]',
+    listItem: 'py-3 px-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#F8FAFC] transition-colors',
+    listItemActive: 'py-3 px-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#EFF6FF] border border-[#BFDBFE] transition-colors',
+    modalOverlay: 'fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn',
+    modalCard: 'w-full max-w-lg bg-white border border-[#E2E8F0] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto space-y-4',
+    modalCardWide: 'w-full max-w-2xl bg-white border border-[#E2E8F0] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto space-y-4',
+    modalCardSm: 'w-full max-w-md bg-white border border-[#E2E8F0] rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto space-y-4',
+    chatContainer: 'bg-white border border-[#E2E8F0] rounded-xl flex flex-col h-[calc(100vh-140px)] animate-fadeIn p-0 overflow-hidden',
+    chatMessages: 'flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8FAFC]',
+    chatInputBar: 'p-3 bg-white border-t border-[#E2E8F0] flex gap-2',
+  },
+
   // Tarjetas y Paneles
   card: {
     base: 'bg-white border border-[#E2E8F0] rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)] transition-all',
-    interactive: 'bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:border-[#CBD5E1] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all',
+    interactive: 'bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)] hover:border-[#CBD5E1] transition-all cursor-pointer',
+    selected: 'bg-white border-[#2563EB] ring-2 ring-[#2563EB]/10 rounded-xl p-5 shadow-sm transition-all cursor-pointer',
     subtle: 'bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-4',
   },
 

@@ -106,7 +106,7 @@ export const App: React.FC = () => {
         )}
 
         {currentTab === 'dashboard' && (
-          <Dashboard />
+          <Dashboard stats={stats} />
         )}
 
         {currentTab === 'chat' && (
