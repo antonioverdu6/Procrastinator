@@ -72,34 +72,48 @@ Tus datos y claves se almacenan **únicamente en tu equipo**:
 
 ---
 
-## 📂 Estructura del Proyecto
+## 📂 Estructura del Proyecto (Arquitectura Desacoplada)
 
-El código está estructurado con una carpeta dedicada por componente y un sistema de estilos centralizado:
+El sistema separa completamente el backend en Python (**FastAPI** + **SQLite**) de la interfaz de usuario (**React** + **Vite** + **Electron**):
 
 ```
 Procrastinator/
+├── backend/
+│   ├── app/
+│   │   ├── main.py            # Servidor FastAPI y endpoints REST (/api/...)
+│   │   ├── database.py        # Base de datos SQLite local y migraciones
+│   │   ├── models.py          # Esquemas Pydantic tipados
+│   │   ├── scheduler.py       # Algoritmo de reparto de carga y estadísticas
+│   │   └── ai_service.py      # Integración con Gemini / OpenAI / Groq
+│   ├── data/
+│   │   └── procrastinator.db  # Base de datos SQLite local persistente
+│   ├── requirements.txt       # fastapi, uvicorn, pydantic, httpx
+│   └── run.py                 # Script directo de arranque (puerto 8000)
 ├── electron/
-│   ├── main.cjs               # Ventana nativa y ciclo de vida de Electron
-│   └── preload.cjs            # Puente IPC seguro
+│   ├── main.cjs               # Proceso principal nativo de Electron
+│   └── preload.cjs            # Puente seguro de Electron
 ├── src/
-│   ├── style.js               # Tokens de diseño y estilos estructurados por objetos
+│   ├── style.js               # Tokens y estilos estructurados por objetos
 │   ├── style.d.ts             # Tipado estricto de estilos
+│   ├── services/
+│   │   └── api.ts             # Cliente HTTP tipado que conecta con FastAPI
 │   ├── components/
+│   │   ├── ProcrastinatorBox/ # Primitivo estático ("div-procrastinator")
+│   │   ├── ProcrastinatorButton/ # Botón estático
+│   │   ├── ProcrastinatorBadge/  # Badge estático
+│   │   ├── ProcrastinatorInput/  # Input estático
+│   │   ├── ProcrastinatorText/   # Tipografía estática
 │   │   ├── DailyFocus/        # Vista del objetivo diario y cola de tareas
 │   │   ├── Timer/             # Temporizador de foco y fricción
-│   │   ├── ProjectManager/    # Proyectos y backlog
+│   │   ├── ProjectManager/    # Proyectos, backlog y refinamiento con IA
 │   │   ├── Dashboard/         # Métricas y gráficos de rendimiento
 │   │   ├── Chatbot/           # Asistente conversacional de jornada
 │   │   ├── Navbar/            # Barra de navegación superior
 │   │   └── SettingsModal/     # Configuración de horas y claves
-│   ├── services/
-│   │   ├── storageService.ts  # Persistencia de datos local
-│   │   ├── schedulerEngine.ts # Algoritmo de reparto de carga y estadísticas
-│   │   └── aiService.ts       # Conexión con Gemini / OpenAI y motor offline
 │   ├── types/
-│   │   └── index.ts           # Modelos de datos TypeScript
-│   ├── App.tsx                # Orquestador principal
+│   │   └── index.ts           # Modelos TypeScript sincronizados
+│   ├── App.tsx                # Orquestador principal de vistas
 │   └── main.tsx               # Entrada de React
-├── iniciar.bat                # Lanzador directo para Windows
+├── iniciar.bat                # Lanzador de un solo clic (FastAPI + Desktop)
 └── package.json
 ```

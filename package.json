@@ -6,9 +6,10 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
+    "backend": "python backend/run.py",
     "build": "tsc && vite build",
     "electron": "electron .",
-    "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "electron:dev": "concurrently -k \"python backend/run.py\" \"vite\" \"wait-on tcp:8000 && wait-on tcp:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
     "preview": "vite preview"
   },

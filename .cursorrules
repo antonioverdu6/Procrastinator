@@ -1,0 +1,8 @@
+# Procrastinator - Reglas para Cursor / Asistentes de Código
+
+Sigue estrictamente las reglas de [AGENTS.md](./AGENTS.md):
+1. Estilo blanco minimalista: Fondo `#F8FAFC`, tarjetas `#FFFFFF`, bordes `#E2E8F0`, acento `#2563EB`. Cero neones oscuros.
+2. Todos los estilos deben consumirse desde `src/style.js` estructurados por objetos (`styles.card`, `styles.button`, etc.).
+3. Arquitectura estricta: Una carpeta por componente bajo `src/components/<NombreComponente>/` conteniendo su `<NombreComponente>.tsx` e `index.ts`.
+4. El PM debe evaluar la utilidad de las tareas y estimar duraciones usando `accuracyRatio`.
+5. En Windows, usar `npm.cmd` para comandos de paquete.

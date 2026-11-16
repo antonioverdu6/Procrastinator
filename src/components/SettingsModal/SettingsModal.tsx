@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { UserSettings } from '../../types';
-import { StorageService } from '../../services/storageService';
+import { api } from '../../services/api';
+import { ProcrastinatorBox } from '../ProcrastinatorBox';
+import { ProcrastinatorButton } from '../ProcrastinatorButton';
+import { ProcrastinatorInput } from '../ProcrastinatorInput';
+import { ProcrastinatorText } from '../ProcrastinatorText';
 import { Settings, Eye, EyeOff, Save, Check, ExternalLink } from 'lucide-react';
 import { styles } from '../../style';
 
@@ -23,15 +27,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    StorageService.saveSettings(form);
-    onSaved(form);
-    setJustSaved(true);
-    setTimeout(() => {
-      setJustSaved(false);
-      onClose();
-    }, 500);
+    try {
+      await api.saveSettings(form);
+      onSaved(form);
+      setJustSaved(true);
+      setTimeout(() => {
+        setJustSaved(false);
+        onClose();
+      }, 500);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getProviderDocLink = () => {
@@ -41,28 +49,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 w-full max-w-lg shadow-xl space-y-5 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-          <div className="flex items-center gap-2">
+    <ProcrastinatorBox className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <ProcrastinatorBox variant="card" className="w-full max-w-lg shadow-xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <ProcrastinatorBox className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+          <ProcrastinatorBox className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-[#2563EB]" />
-            <h3 className={styles.typography.h2}>Configuración</h3>
-          </div>
+            <ProcrastinatorText variant="h2">Configuración</ProcrastinatorText>
+          </ProcrastinatorBox>
           <button
             onClick={onClose}
             className="text-[#94A3B8] hover:text-[#0F172A] p-1 rounded-lg text-sm"
           >
             ✕
           </button>
-        </div>
+        </ProcrastinatorBox>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-sm">
           {/* Capacidad Diaria */}
-          <div>
+          <ProcrastinatorBox>
             <label className={styles.input.label}>Capacidad Diaria Habitual</label>
-            <p className="text-xs text-[#64748B] mb-1.5">
+            <ProcrastinatorText variant="caption" className="mb-1.5 block">
               Horas que dedicas normalmente al día a tus desarrollos.
-            </p>
+            </ProcrastinatorText>
             <select
               value={form.defaultDailyHours}
               onChange={e => setForm({ ...form, defaultDailyHours: Number(e.target.value) })}
@@ -75,10 +83,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <option value={4.0}>4.0 horas al día</option>
               <option value={6.0}>6.0 horas al día</option>
             </select>
-          </div>
+          </ProcrastinatorBox>
 
           {/* Proveedor de IA */}
-          <div>
+          <ProcrastinatorBox>
             <label className={styles.input.label}>Proveedor de IA</label>
             <select
               value={form.aiProvider}
@@ -89,11 +97,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <option value="openai">OpenAI (GPT-4o-mini)</option>
               <option value="groq">Groq (Llama 3.3 70B)</option>
             </select>
-          </div>
+          </ProcrastinatorBox>
 
           {/* API Key */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
+          <ProcrastinatorBox>
+            <ProcrastinatorBox className="flex items-center justify-between mb-1">
               <label className={styles.input.label}>API Key</label>
               <a
                 href={getProviderDocLink()}
@@ -103,7 +111,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 Obtener clave <ExternalLink className="w-3 h-3" />
               </a>
-            </div>
+            </ProcrastinatorBox>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
@@ -123,10 +131,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <p className="text-[11px] text-[#94A3B8] mt-1">
               Se almacena únicamente de manera local en tu máquina.
             </p>
-          </div>
+          </ProcrastinatorBox>
 
           {/* Tono */}
-          <div>
+          <ProcrastinatorBox>
             <label className={styles.input.label}>Exigencia del Copiloto</label>
             <div className="grid grid-cols-3 gap-2">
               {[
@@ -148,27 +156,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               ))}
             </div>
-          </div>
+          </ProcrastinatorBox>
 
           {/* Botones */}
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#E2E8F0]">
-            <button
+            <ProcrastinatorButton
               type="button"
+              variant="ghost"
               onClick={onClose}
-              className={styles.button.ghost}
             >
               Cancelar
-            </button>
-            <button
+            </ProcrastinatorButton>
+            <ProcrastinatorButton
               type="submit"
-              className={styles.button.primary}
+              variant="primary"
             >
               {justSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               <span>{justSaved ? 'Guardado' : 'Guardar Ajustes'}</span>
-            </button>
+            </ProcrastinatorButton>
           </div>
         </form>
-      </div>
-    </div>
+      </ProcrastinatorBox>
+    </ProcrastinatorBox>
   );
 };

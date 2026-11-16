@@ -1,8 +1,28 @@
 const { app, BrowserWindow, ipcMain, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 
 let mainWindow = null;
+let pythonProcess = null;
+
+function startBackendIfNeeded() {
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+  const backendScript = path.join(__dirname, '../backend/run.py');
+
+  if (fs.existsSync(backendScript)) {
+    try {
+      pythonProcess = spawn('python', [backendScript], {
+        cwd: path.join(__dirname, '../backend'),
+        stdio: 'ignore',
+        detached: false
+      });
+      console.log('Servidor FastAPI iniciado en segundo plano');
+    } catch (e) {
+      console.warn('No se pudo arrancar el proceso de Python automáticamente:', e);
+    }
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -42,6 +62,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Iniciar backend si no hay otro proceso corriendo
+  startBackendIfNeeded();
   createWindow();
 
   app.on('activate', () => {
@@ -50,8 +72,17 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (pythonProcess) {
+    pythonProcess.kill();
+  }
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('will-quit', () => {
+  if (pythonProcess) {
+    pythonProcess.kill();
   }
 });
 

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, CheckCircle2, Coffee, AlertCircle, Sparkles, CheckSquare, Square, ChevronDown, ChevronUp, FileCode } from 'lucide-react';
 import { Task, Project, TaskActionPlan } from '../../types';
-import { AIService } from '../../services/aiService';
-import { styles } from '../../style';
+import { api } from '../../services/api';
+import { ProcrastinatorBox } from '../ProcrastinatorBox';
+import { ProcrastinatorButton } from '../ProcrastinatorButton';
+import { ProcrastinatorBadge } from '../ProcrastinatorBadge';
+import { ProcrastinatorText } from '../ProcrastinatorText';
 
 interface TimerProps {
   task: Task;
@@ -83,7 +86,7 @@ export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, on
     setLoadingPlan(true);
     setShowPlan(true);
     try {
-      const generatedPlan = await AIService.getTaskActionPlan(task, project);
+      const generatedPlan = await api.getTaskActionPlan(task.id);
       setPlan(generatedPlan);
     } catch (err) {
       console.error(err);
@@ -105,100 +108,107 @@ export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, on
   const progressPercent = Math.min(100, Math.round((secondsElapsed / targetSeconds) * 100));
 
   return (
-    <div className={styles.card.base}>
+    <ProcrastinatorBox variant="card">
       {/* Barra de progreso de la tarea */}
-      <div className="w-full h-1 bg-[#F1F5F9] rounded-full overflow-hidden mb-4">
+      <ProcrastinatorBox className="w-full h-1 bg-[#F1F5F9] rounded-full overflow-hidden mb-4">
         <div
           className={`h-full transition-all duration-300 ${
             isOvertime ? 'bg-[#D97706]' : 'bg-[#2563EB]'
           }`}
           style={{ width: `${progressPercent}%` }}
         />
-      </div>
+      </ProcrastinatorBox>
 
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <ProcrastinatorBox className="flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Datos de la tarea activa */}
-        <div className="flex-1 min-w-0 w-full md:w-auto">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className={mode === 'focus' ? styles.badge.primary : styles.badge.success}>
+        <ProcrastinatorBox className="flex-1 min-w-0 w-full md:w-auto">
+          <ProcrastinatorBox className="flex items-center gap-2 mb-1 flex-wrap">
+            <ProcrastinatorBadge variant={mode === 'focus' ? 'primary' : 'success'}>
               {mode === 'focus' ? 'Enfoque activo' : 'Pausa de descanso'}
-            </span>
-            <span className="text-xs text-[#64748B]">
+            </ProcrastinatorBadge>
+            <ProcrastinatorText variant="caption">
               Estimado: {task.estimatedMinutes}m | Registrado hoy: {task.actualMinutes}m
-            </span>
-          </div>
+            </ProcrastinatorText>
+          </ProcrastinatorBox>
 
-          <h3 className="text-lg font-bold text-[#0F172A] truncate">{task.title}</h3>
+          <ProcrastinatorText variant="h2" className="truncate">
+            {task.title}
+          </ProcrastinatorText>
           {task.description && (
-            <p className="text-xs text-[#64748B] truncate mt-0.5">{task.description}</p>
+            <ProcrastinatorText variant="caption" className="truncate block mt-0.5">
+              {task.description}
+            </ProcrastinatorText>
           )}
 
           {/* Botón para desglosar la tarea con la IA */}
-          <div className="mt-2.5">
-            <button
+          <ProcrastinatorBox className="mt-2.5">
+            <ProcrastinatorButton
+              variant="secondary"
               onClick={handleFetchActionPlan}
               disabled={loadingPlan}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] bg-[#EFF6FF] hover:bg-[#DBEAFE] px-3 py-1.5 rounded-lg border border-[#DBEAFE] transition-colors"
+              className="text-xs font-semibold text-[#2563EB] bg-[#EFF6FF] hover:bg-[#DBEAFE] border-[#DBEAFE]"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{loadingPlan ? 'Consultando al PM...' : showPlan ? 'Ocultar guía de ejecución' : '¿Qué tengo que hacer? (Guía IA)'}</span>
               {showPlan ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
+            </ProcrastinatorButton>
+          </ProcrastinatorBox>
+        </ProcrastinatorBox>
 
         {/* Cronómetro y Botones */}
-        <div className="flex items-center gap-3">
-          <div className="font-mono text-2xl font-bold tracking-tight text-[#0F172A] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-1.5 rounded-lg min-w-[95px] text-center">
+        <ProcrastinatorBox className="flex items-center gap-3">
+          <ProcrastinatorBox className="font-mono text-2xl font-bold tracking-tight text-[#0F172A] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-1.5 rounded-lg min-w-[95px] text-center">
             {formatTime(secondsElapsed)}
-          </div>
+          </ProcrastinatorBox>
 
-          <div className="flex items-center gap-1.5">
-            <button
+          <ProcrastinatorBox className="flex items-center gap-1.5">
+            <ProcrastinatorButton
+              variant={isRunning ? 'secondary' : 'primary'}
               onClick={handleTogglePlay}
-              className={isRunning ? styles.button.secondary : styles.button.primary}
               title={isRunning ? 'Pausar' : 'Iniciar'}
             >
               {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
               <span>{isRunning ? 'Pausar' : 'Iniciar'}</span>
-            </button>
+            </ProcrastinatorButton>
 
-            <button
+            <ProcrastinatorButton
+              variant="success"
               onClick={handleComplete}
-              className={styles.button.success}
               title="Marcar tarea como completada"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Listo</span>
-            </button>
+            </ProcrastinatorButton>
 
-            <button
+            <ProcrastinatorButton
+              variant="ghost"
               onClick={handleSwitchBreak}
-              className={styles.button.ghost}
               title={mode === 'focus' ? 'Tomar pausa' : 'Volver al foco'}
             >
               <Coffee className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+            </ProcrastinatorButton>
+          </ProcrastinatorBox>
+        </ProcrastinatorBox>
+      </ProcrastinatorBox>
 
       {/* Despliegue de la Guía Paso a Paso con IA */}
       {showPlan && plan && (
-        <div className="mt-5 pt-4 border-t border-[#E2E8F0] space-y-3 bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0] animate-fadeIn">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#2563EB]">
+        <ProcrastinatorBox variant="subtle" className="mt-5 pt-4 border-t border-[#E2E8F0] space-y-3 animate-fadeIn">
+          <ProcrastinatorBox>
+            <ProcrastinatorBadge variant="primary">
               Plan de Acción del Lead PM
-            </span>
-            <p className="text-xs text-[#334155] mt-0.5 font-medium">{plan.summary}</p>
-          </div>
+            </ProcrastinatorBadge>
+            <ProcrastinatorText variant="body" className="mt-1 font-medium">
+              {plan.summary}
+            </ProcrastinatorText>
+          </ProcrastinatorBox>
 
           {/* Checklist interactivo */}
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
+          <ProcrastinatorBox className="space-y-1.5">
+            <ProcrastinatorText variant="caption" className="font-semibold uppercase tracking-wider block">
               Pasos a ejecutar (marca conforme avances):
-            </span>
-            <div className="space-y-1">
+            </ProcrastinatorText>
+            <ProcrastinatorBox className="space-y-1">
               {plan.steps.map((step, idx) => {
                 const isChecked = Boolean(checkedSteps[idx]);
                 return (
@@ -218,13 +228,13 @@ export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, on
                   </div>
                 );
               })}
-            </div>
-          </div>
+            </ProcrastinatorBox>
+          </ProcrastinatorBox>
 
           {/* Archivos y Trampa a evitar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+          <ProcrastinatorBox className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
             {plan.filesToTouch && plan.filesToTouch.length > 0 && (
-              <div className="bg-white p-2.5 rounded-lg border border-[#E2E8F0]">
+              <ProcrastinatorBox className="bg-white p-2.5 rounded-lg border border-[#E2E8F0]">
                 <span className="font-semibold text-[#475569] flex items-center gap-1 mb-1">
                   <FileCode className="w-3.5 h-3.5 text-[#2563EB]" /> Archivos o módulos a tocar:
                 </span>
@@ -235,7 +245,7 @@ export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, on
                     </span>
                   ))}
                 </div>
-              </div>
+              </ProcrastinatorBox>
             )}
 
             {plan.pitfall && (
@@ -246,8 +256,8 @@ export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, on
                 <p className="text-[11px] leading-relaxed">{plan.pitfall}</p>
               </div>
             )}
-          </div>
-        </div>
+          </ProcrastinatorBox>
+        </ProcrastinatorBox>
       )}
 
       {/* Alerta de fricción / atasco */}
@@ -259,6 +269,6 @@ export const Timer: React.FC<TimerProps> = ({ task, project, onTaskCompleted, on
           </div>
         </div>
       )}
-    </div>
+    </ProcrastinatorBox>
   );
 };

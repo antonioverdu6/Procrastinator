@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, UserSettings } from '../../types';
-import { StorageService } from '../../services/storageService';
-import { AIService } from '../../services/aiService';
+import { api } from '../../services/api';
+import { ProcrastinatorBox } from '../ProcrastinatorBox';
+import { ProcrastinatorButton } from '../ProcrastinatorButton';
+import { ProcrastinatorBadge } from '../ProcrastinatorBadge';
+import { ProcrastinatorInput } from '../ProcrastinatorInput';
+import { ProcrastinatorText } from '../ProcrastinatorText';
 import { Send, Key, Trash2 } from 'lucide-react';
-import { styles } from '../../style';
 
 interface ChatbotProps {
   settings: UserSettings;
@@ -16,10 +19,23 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   onRefreshData,
   onOpenSettings
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => StorageService.getChatMessages());
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const fetchHistory = async () => {
+    try {
+      const history = await api.getChatHistory();
+      setMessages(history);
+    } catch (err) {
+      console.warn("Error cargando historial de chat:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,68 +56,65 @@ export const Chatbot: React.FC<ChatbotProps> = ({
       timestamp: new Date().toISOString()
     };
 
-    const updated = [...messages, userMsg];
-    setMessages(updated);
-    StorageService.saveChatMessages(updated);
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
     try {
-      const response = await AIService.sendMessage(text);
-      const withReply = [...updated, response];
-      setMessages(withReply);
-      StorageService.saveChatMessages(withReply);
+      const response = await api.sendChatMessage(text);
+      setMessages(prev => [...prev, response]);
       onRefreshData();
     } catch (err: any) {
       console.error(err);
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
-        content: 'No pude procesar tu solicitud en este momento.',
+        content: 'No pude conectar con el servidor de IA.',
         timestamp: new Date().toISOString()
       };
-      const withError = [...updated, errorMsg];
-      setMessages(withError);
-      StorageService.saveChatMessages(withError);
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsTyping(false);
     }
   };
 
-  const handleClearHistory = () => {
-    localStorage.removeItem('procrastinator_chat_messages');
-    const initial = StorageService.getChatMessages();
-    setMessages(initial);
+  const handleClearHistory = async () => {
+    try {
+      await api.clearChatHistory();
+      setMessages([]);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const hasApiKey = Boolean(settings.apiKey && settings.apiKey.trim().length > 0);
 
   return (
-    <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm flex flex-col h-[calc(100vh-140px)] animate-fadeIn">
+    <ProcrastinatorBox variant="card" className="flex flex-col h-[calc(100vh-140px)] animate-fadeIn p-0 overflow-hidden">
       {/* Header del Copiloto */}
-      <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-[#0F172A] text-sm">Copiloto de Jornada</h3>
-            <span className={hasApiKey ? styles.badge.success : styles.badge.neutral}>
+      <ProcrastinatorBox className="p-4 border-b border-[#E2E8F0] flex items-center justify-between">
+        <ProcrastinatorBox>
+          <ProcrastinatorBox className="flex items-center gap-2">
+            <ProcrastinatorText variant="h3">Copiloto de Jornada</ProcrastinatorText>
+            <ProcrastinatorBadge variant={hasApiKey ? 'success' : 'neutral'}>
               {hasApiKey ? `${settings.aiProvider.toUpperCase()} Conectado` : 'Motor Local'}
-            </span>
-          </div>
-          <p className="text-xs text-[#64748B]">
+            </ProcrastinatorBadge>
+          </ProcrastinatorBox>
+          <ProcrastinatorText variant="caption">
             Ajusta tus horas diarias o pide consejo para desglosar tareas.
-          </p>
-        </div>
+          </ProcrastinatorText>
+        </ProcrastinatorBox>
 
-        <div className="flex items-center gap-2">
+        <ProcrastinatorBox className="flex items-center gap-2">
           {!hasApiKey && (
-            <button
+            <ProcrastinatorButton
+              variant="ghost"
               onClick={onOpenSettings}
-              className={styles.button.ghost}
               title="Configurar clave de API"
             >
               <Key className="w-3.5 h-3.5 text-[#2563EB]" />
               <span className="text-xs">Añadir API Key</span>
-            </button>
+            </ProcrastinatorButton>
           )}
 
           <button
@@ -111,17 +124,17 @@ export const Chatbot: React.FC<ChatbotProps> = ({
           >
             <Trash2 className="w-4 h-4" />
           </button>
-        </div>
-      </div>
+        </ProcrastinatorBox>
+      </ProcrastinatorBox>
 
       {/* Lista de Mensajes */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8FAFC]">
+      <ProcrastinatorBox className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8FAFC]">
         {messages.map(msg => (
-          <div
+          <ProcrastinatorBox
             key={msg.id}
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div
+            <ProcrastinatorBox
               className={`max-w-[85%] rounded-lg p-3.5 text-xs leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-[#2563EB] text-white shadow-xs'
@@ -150,42 +163,42 @@ export const Chatbot: React.FC<ChatbotProps> = ({
               }`}>
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
-            </div>
-          </div>
+            </ProcrastinatorBox>
+          </ProcrastinatorBox>
         ))}
 
         {isTyping && (
-          <div className="text-xs text-[#64748B] flex items-center gap-1.5 p-2 bg-white border border-[#E2E8F0] rounded-lg w-fit">
+          <ProcrastinatorBox className="text-xs text-[#64748B] flex items-center gap-1.5 p-2 bg-white border border-[#E2E8F0] rounded-lg w-fit">
             <span>Escribiendo respuesta...</span>
-          </div>
+          </ProcrastinatorBox>
         )}
 
         <div ref={messagesEndRef} />
-      </div>
+      </ProcrastinatorBox>
 
       {/* Barra de Entrada y Comandos Rápidos */}
-      <div className="p-3 border-t border-[#E2E8F0] bg-white space-y-2">
+      <ProcrastinatorBox className="p-3 border-t border-[#E2E8F0] bg-white space-y-2">
         {/* Atajos de comandos */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          <button
+        <ProcrastinatorBox className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <ProcrastinatorButton
+            variant="secondary"
             onClick={() => handleSend('Tengo 1 hora extra hoy')}
-            className={styles.button.secondary}
           >
             +1h extra hoy
-          </button>
-          <button
+          </ProcrastinatorButton>
+          <ProcrastinatorButton
+            variant="secondary"
             onClick={() => handleSend('Hoy solo puedo dedicar 1 hora')}
-            className={styles.button.secondary}
           >
             Solo 1h hoy
-          </button>
-          <button
+          </ProcrastinatorButton>
+          <ProcrastinatorButton
+            variant="secondary"
             onClick={() => handleSend('¿Cuál es mi tarea prioritaria de hoy?')}
-            className={styles.button.secondary}
           >
             ¿Cuál es mi foco?
-          </button>
-        </div>
+          </ProcrastinatorButton>
+        </ProcrastinatorBox>
 
         {/* Formulario */}
         <form
@@ -195,23 +208,22 @@ export const Chatbot: React.FC<ChatbotProps> = ({
           }}
           className="flex items-center gap-2"
         >
-          <input
+          <ProcrastinatorInput
             type="text"
             placeholder="Escribe aquí (ej: 'Tengo 2 horas extra', 'Hoy solo puedo 45 minutos')..."
             value={input}
             onChange={e => setInput(e.target.value)}
             disabled={isTyping}
-            className={styles.input.base}
           />
-          <button
+          <ProcrastinatorButton
             type="submit"
+            variant="primary"
             disabled={!input.trim() || isTyping}
-            className={styles.button.primary}
           >
             <Send className="w-4 h-4" />
-          </button>
+          </ProcrastinatorButton>
         </form>
-      </div>
-    </div>
+      </ProcrastinatorBox>
+    </ProcrastinatorBox>
   );
 };
