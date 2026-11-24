@@ -8,8 +8,13 @@ DEFAULT_GEMINI_MODELS = [
 ]
 
 
-async def query_llm(prompt: str, system_prompt: str = '', max_tokens: int = 3500) -> str:
-    """Cliente unificado para consultar Gemini, OpenAI o Groq según configuración local."""
+async def query_llm(
+    prompt: str,
+    system_prompt: str = '',
+    max_tokens: int = 2000,
+    json_mode: bool = False,
+) -> str:
+    """Cliente unificado para consultar Gemini, OpenAI o Groq con soporte opcional de JSON nativo."""
     settings = get_settings()
     api_key = settings.get('apiKey', '').strip()
     if not api_key:
@@ -23,19 +28,23 @@ async def query_llm(prompt: str, system_prompt: str = '', max_tokens: int = 3500
             candidates = [custom] if custom else DEFAULT_GEMINI_MODELS
             last_error = "Sin respuesta de Gemini"
 
+            gen_config: dict = {
+                "temperature": 0.3,
+                "maxOutputTokens": max_tokens,
+            }
+            if json_mode:
+                gen_config["responseMimeType"] = "application/json"
+
             for model in candidates:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                 payload = {
                     "contents": [
                         {
                             "role": "user",
-                            "parts": [{"text": f"{system_prompt}\n\n{prompt}"}],
+                            "parts": [{"text": f"{system_prompt}\n\n{prompt}" if system_prompt else prompt}],
                         }
                     ],
-                    "generationConfig": {
-                        "temperature": 0.35,
-                        "maxOutputTokens": max_tokens,
-                    },
+                    "generationConfig": gen_config,
                 }
                 try:
                     res = await client.post(url, json=payload)
@@ -68,9 +77,12 @@ async def query_llm(prompt: str, system_prompt: str = '', max_tokens: int = 3500
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            "temperature": 0.35,
+            "temperature": 0.3,
             "max_tokens": max_tokens,
         }
+        if json_mode and provider == 'openai':
+            payload["response_format"] = {"type": "json_object"}
+
         res = await client.post(endpoint, json=payload, headers=headers)
         if res.status_code != 200:
             raise Exception(f"AI API error: {res.status_code} - {res.text}")

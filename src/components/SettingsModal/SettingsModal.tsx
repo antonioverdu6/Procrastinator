@@ -126,16 +126,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* GitHub Token opcional */}
         <ProcrastinatorBox>
-          <label className={styles.input.label}>GitHub Token (opcional, para repos privados)</label>
+          <ProcrastinatorBox className="flex items-center justify-between mb-1">
+            <label className={styles.input.label}>GitHub Token (opcional, para repos privados o +cuota)</label>
+            <a
+              href="https://github.com/settings/tokens"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-[#2563EB] hover:underline flex items-center gap-1"
+            >
+              Crear token <ExternalLink className="w-3 h-3" />
+            </a>
+          </ProcrastinatorBox>
           <input
             type="password"
-            placeholder="ghp_... (déjalo vacío si tus repos son públicos)"
+            placeholder="ghp_... o github_pat_... (opcional para repos públicos)"
             value={form.githubToken || ''}
             onChange={e => setForm({ ...form, githubToken: e.target.value })}
             className={styles.input.base}
           />
           <p className="text-[11px] text-[#94A3B8] mt-1">
-            Permite que la Guía Técnica lea archivos reales de tus repos privados en GitHub.
+            Sube el límite de GitHub de 60 a 5.000 peticiones/hora y permite leer repos privados. Para repos públicos también puedes pegar la ruta local de tu carpeta.
           </p>
         </ProcrastinatorBox>
 

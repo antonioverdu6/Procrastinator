@@ -163,5 +163,6 @@ export const styles = {
     h3: 'text-base font-semibold text-[#0F172A]',
     body: 'text-sm text-[#334155]',
     caption: 'text-xs text-[#64748B]',
+    inlineCode: 'px-1.5 py-0.5 bg-[#F1F5F9] border border-[#E2E8F0] rounded font-mono text-[11px] text-[#0F172A]',
   }
 };

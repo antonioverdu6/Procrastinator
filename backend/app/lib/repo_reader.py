@@ -1,9 +1,18 @@
 import base64
+import io
 import os
 import re
+import time
+import zipfile
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
+
+_REPO_TREE_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+_FILE_CONTENT_CACHE: Dict[str, Tuple[float, str]] = {}
+_ZIP_FILES_CACHE: Dict[str, Tuple[float, Dict[str, str]]] = {}
+_CACHE_TTL_SECONDS = 300.0
+_MAX_ZIP_BYTES = 12 * 1024 * 1024
 
 IGNORED_SEGMENTS = {
     'node_modules', '.git', 'dist', 'build', '__pycache__', '.venv', 'venv',
@@ -150,11 +159,11 @@ def _read_local_repo_context(local_path: str, query_text: str) -> Dict[str, Any]
     keywords = _extract_keywords(query_text)
     ranked = sorted(all_files, key=lambda p: _score_path_relevance(p, keywords), reverse=True)
     snippets: List[Dict[str, str]] = []
-    for rel in ranked[:4]:
+    for rel in ranked[:3]:
         full = os.path.join(root, rel)
         try:
             with open(full, 'r', encoding='utf-8', errors='ignore') as fh:
-                content = fh.read(2600)
+                content = fh.read(1400)
             if content.strip():
                 snippets.append({"path": rel, "content": content})
         except Exception:
@@ -167,7 +176,7 @@ def _read_local_repo_context(local_path: str, query_text: str) -> Dict[str, Any]
         "language": None,
         "description": f"Repositorio local en {root}",
         "filesCount": len(all_files),
-        "treePreview": all_files[:80],
+        "treePreview": ranked[:35],
         "fileSnippets": snippets,
         "error": None,
     }
@@ -180,7 +189,23 @@ async def _fetch_github_file_content(
     branch: str,
     path: str,
     headers: Dict[str, str],
+    has_token: bool = False,
 ) -> Optional[str]:
+    cache_key = f"{owner}/{repo}@{branch}:{path}"
+    now = time.time()
+    cached = _FILE_CONTENT_CACHE.get(cache_key)
+    if cached and (now - cached[0]) < _CACHE_TTL_SECONDS:
+        return cached[1]
+
+    # Para repos públicos sin token, raw.githubusercontent.com evita el límite de 60 req/h de api.github.com
+    if not has_token:
+        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}"
+        res = await client.get(raw_url)
+        if res.status_code == 200 and res.text:
+            snippet = res.text[:2600]
+            _FILE_CONTENT_CACHE[cache_key] = (now, snippet)
+            return snippet
+
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}"
     res = await client.get(url, headers=headers)
     if res.status_code != 200:
@@ -188,10 +213,50 @@ async def _fetch_github_file_content(
     data = res.json()
     if isinstance(data, dict) and data.get('encoding') == 'base64' and data.get('content'):
         try:
-            decoded = base64.b64decode(data['content']).decode('utf-8', errors='ignore')
-            return decoded[:2600]
+            decoded = base64.b64decode(data['content']).decode('utf-8', errors='ignore')[:2600]
+            _FILE_CONTENT_CACHE[cache_key] = (now, decoded)
+            return decoded
         except Exception:
             return None
+    return None
+
+
+async def _fetch_public_zip_archive(
+    client: httpx.AsyncClient,
+    owner: str,
+    repo: str,
+) -> Optional[Dict[str, str]]:
+    """Descarga el archivo ZIP público de GitHub (sin usar cuota de api.github.com) y cachea archivos relevantes."""
+    cache_key = f"{owner}/{repo}"
+    now = time.time()
+    cached = _ZIP_FILES_CACHE.get(cache_key)
+    if cached and (now - cached[0]) < _CACHE_TTL_SECONDS:
+        return cached[1]
+
+    res = await client.get(f"https://codeload.github.com/{owner}/{repo}/zip/HEAD")
+    if res.status_code != 200 or len(res.content) > _MAX_ZIP_BYTES:
+        return None
+
+    try:
+        files_map: Dict[str, str] = {}
+        with zipfile.ZipFile(io.BytesIO(res.content)) as zf:
+            for info in zf.infolist():
+                if info.is_dir() or info.file_size > 250_000:
+                    continue
+                # Quitar la carpeta raíz '<repo>-HEAD/' del zip
+                parts = info.filename.split('/', 1)
+                rel = parts[1] if len(parts) == 2 else info.filename
+                if not rel or not _is_relevant_path(rel):
+                    continue
+                with zf.open(info) as fh:
+                    text = fh.read(2600).decode('utf-8', errors='ignore')
+                if text.strip():
+                    files_map[rel] = text
+        if files_map:
+            _ZIP_FILES_CACHE[cache_key] = (now, files_map)
+            return files_map
+    except Exception:
+        return None
     return None
 
 
@@ -225,54 +290,104 @@ async def fetch_repo_context(
         "Accept": "application/vnd.github+json",
         "User-Agent": "Procrastinator-PM-App",
     }
-    if github_token and github_token.strip():
+    has_token = bool(github_token and github_token.strip())
+    if has_token:
         headers["Authorization"] = f"Bearer {github_token.strip()}"
+
+    now = time.time()
+    cache_key = f"{label}:{'auth' if has_token else 'anon'}"
 
     try:
         async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
-            meta_res = await client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
-            if meta_res.status_code == 404:
-                return {
-                    "connected": False,
-                    "repoLabel": label,
-                    "filesCount": 0,
-                    "treePreview": [],
-                    "fileSnippets": [],
-                    "error": "Repositorio no encontrado o privado (añade un GitHub Token en Ajustes si es privado).",
-                }
-            if meta_res.status_code != 200:
-                return {
-                    "connected": False,
-                    "repoLabel": label,
-                    "filesCount": 0,
-                    "treePreview": [],
-                    "fileSnippets": [],
-                    "error": f"GitHub API devolvió {meta_res.status_code}.",
-                }
+            cached_meta = _REPO_TREE_CACHE.get(cache_key)
+            if cached_meta and (now - cached_meta[0]) < _CACHE_TTL_SECONDS:
+                repo_meta = cached_meta[1]
+            else:
+                meta_res = await client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
+                if meta_res.status_code == 404:
+                    return {
+                        "connected": False,
+                        "repoLabel": label,
+                        "filesCount": 0,
+                        "treePreview": [],
+                        "fileSnippets": [],
+                        "error": "Repositorio no encontrado o privado (añade un GitHub Token en Ajustes si es privado).",
+                    }
+                if meta_res.status_code == 403:
+                    # Si es repo público sin token pero se agotó el límite 60/h de api.github.com,
+                    # descargar el ZIP público vía codeload.github.com (sin límite de API)
+                    if not has_token:
+                        zip_files = await _fetch_public_zip_archive(client, owner, repo)
+                        if zip_files:
+                            paths = sorted(zip_files.keys())
+                            keywords = _extract_keywords(query_text)
+                            ranked = sorted(paths, key=lambda p: _score_path_relevance(p, keywords), reverse=True)
+                            snippets = [{"path": p, "content": zip_files[p][:1400]} for p in ranked[:3]]
+                            return {
+                                "connected": True,
+                                "repoLabel": label,
+                                "defaultBranch": "HEAD",
+                                "language": None,
+                                "description": "Conectado vía archivo público de GitHub (sin límite de API).",
+                                "filesCount": len(paths),
+                                "treePreview": ranked[:35],
+                                "fileSnippets": snippets,
+                                "error": None,
+                            }
+                    return {
+                        "connected": False,
+                        "repoLabel": label,
+                        "filesCount": 0,
+                        "treePreview": [],
+                        "fileSnippets": [],
+                        "error": "GitHub API devolvió 403 (límite de 60 req/h sin token o repo privado). Añade un GitHub Token gratuito o usa la ruta local de tu carpeta.",
+                    }
+                if meta_res.status_code != 200:
+                    return {
+                        "connected": False,
+                        "repoLabel": label,
+                        "filesCount": 0,
+                        "treePreview": [],
+                        "fileSnippets": [],
+                        "error": f"GitHub API devolvió {meta_res.status_code}.",
+                    }
 
-            meta = meta_res.json()
-            branch = meta.get('default_branch') or 'main'
-            language = meta.get('language')
-            repo_desc = meta.get('description') or ''
+                meta = meta_res.json()
+                branch = meta.get('default_branch') or 'main'
+                language = meta.get('language')
+                repo_desc = meta.get('description') or ''
 
-            tree_res = await client.get(
-                f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1",
-                headers=headers,
-            )
-            paths: List[str] = []
-            if tree_res.status_code == 200:
-                for node in tree_res.json().get('tree', []):
-                    if node.get('type') == 'blob' and _is_relevant_path(node.get('path', '')):
-                        paths.append(node['path'])
+                tree_res = await client.get(
+                    f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1",
+                    headers=headers,
+                )
+                paths: List[str] = []
+                if tree_res.status_code == 200:
+                    for node in tree_res.json().get('tree', []):
+                        if node.get('type') == 'blob' and _is_relevant_path(node.get('path', '')):
+                            paths.append(node['path'])
+
+                repo_meta = {
+                    "defaultBranch": branch,
+                    "language": language,
+                    "description": repo_desc,
+                    "paths": paths,
+                }
+                _REPO_TREE_CACHE[cache_key] = (now, repo_meta)
+
+            branch = repo_meta["defaultBranch"]
+            language = repo_meta["language"]
+            repo_desc = repo_meta["description"]
+            paths = repo_meta["paths"]
 
             keywords = _extract_keywords(query_text)
             ranked = sorted(paths, key=lambda p: _score_path_relevance(p, keywords), reverse=True)
 
             snippets: List[Dict[str, str]] = []
-            for p in ranked[:4]:
-                content = await _fetch_github_file_content(client, owner, repo, branch, p, headers)
+            for p in ranked[:3]:
+                content = await _fetch_github_file_content(client, owner, repo, branch, p, headers, has_token=has_token)
                 if content and content.strip():
-                    snippets.append({"path": p, "content": content})
+                    snippets.append({"path": p, "content": content[:1400]})
 
             return {
                 "connected": True,
@@ -281,7 +396,7 @@ async def fetch_repo_context(
                 "language": language,
                 "description": repo_desc,
                 "filesCount": len(paths),
-                "treePreview": paths[:85],
+                "treePreview": ranked[:35],
                 "fileSnippets": snippets,
                 "error": None,
             }

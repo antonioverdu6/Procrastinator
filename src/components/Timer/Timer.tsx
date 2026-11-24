@@ -23,6 +23,7 @@ import { ProcrastinatorButton } from '../ProcrastinatorButton';
 import { ProcrastinatorBadge } from '../ProcrastinatorBadge';
 import { ProcrastinatorInput } from '../ProcrastinatorInput';
 import { ProcrastinatorText } from '../ProcrastinatorText';
+import { FormattedText } from '../FormattedText';
 
 interface TimerProps {
   task: Task;
@@ -582,7 +583,7 @@ export const Timer: React.FC<TimerProps> = ({
                         : 'bg-[#F8FAFC] border border-[#E2E8F0] text-[#334155] mr-4 space-y-2'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    <FormattedText text={m.content} />
                     {m.referencedFiles && m.referencedFiles.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-1">
                         {m.referencedFiles.map((rf, i) => (

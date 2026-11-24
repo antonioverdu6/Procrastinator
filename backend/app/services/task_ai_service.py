@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any, Dict, List, Optional
 
 from ..lib.db_helpers import get_project_tasks_summary
@@ -15,40 +16,138 @@ def _build_project_and_repo_context_block(
     sibling_tasks: List[Dict[str, Any]],
     repo_ctx: Dict[str, Any],
 ) -> str:
-    siblings_txt = json.dumps(
-        [
-            {"epic": s.get("epic"), "title": s.get("title"), "status": s.get("status")}
-            for s in sibling_tasks[:15]
-        ],
-        ensure_ascii=False,
-    )
-    repo_block = "Sin repositorio vinculado."
+    siblings_txt = "\n".join(
+        f"- [{s.get('status')}] {s.get('epic')}: {s.get('title')}"
+        for s in sibling_tasks[:10]
+    ) or "(sin otras tareas)"
+
+    repo_block = "Sin repo."
     if repo_ctx.get("connected"):
-        tree_str = ", ".join(repo_ctx.get("treePreview", [])[:60])
-        snippets_str = "\n\n".join(
-            f"--- ARCHIVO: {fs['path']} ---\n{fs['content']}"
-            for fs in repo_ctx.get("fileSnippets", [])
+        tree_str = ", ".join(repo_ctx.get("treePreview", [])[:35])
+        snippets_str = "\n".join(
+            f"=== {fs['path']} ===\n{fs['content']}"
+            for fs in repo_ctx.get("fileSnippets", [])[:3]
         )
-        repo_block = (
-            f"Repositorio: {repo_ctx.get('repoLabel')} (rama: {repo_ctx.get('defaultBranch')}, lenguaje: {repo_ctx.get('language')})\n"
-            f"Árbol de archivos ({repo_ctx.get('filesCount')}): {tree_str}\n\n"
-            f"Fragmentos de código relevantes:\n{snippets_str}"
+        repo_block = f"Repo {repo_ctx.get('repoLabel')} ({repo_ctx.get('filesCount')} arch): {tree_str}\n{snippets_str}"
+
+    subs_list = ", ".join(s.get('title', '') for s in (task.get('subtasks') or [])[:6])
+    proj_desc = (project.get('description') or '')[:260] if project else ''
+
+    return (
+        f"PROYECTO: {project.get('name', 'General') if project else 'General'} | {proj_desc}\n"
+        f"HERMANAS:\n{siblings_txt}\n"
+        f"TAREA: [{task.get('epic', 'General')}] {task.get('title')} ({task.get('estimatedMinutes', 45)}m)\n"
+        f"DESC: {(task.get('description') or '')[:260]}\n"
+        f"SUBTAREAS: {subs_list or 'ninguna'}\n"
+        f"REPO:\n{repo_block}"
+    )
+
+
+def _format_llm_error_notice(exc: Exception) -> str:
+    msg = str(exc)
+    if '402' in msg or 'credits are depleted' in msg.lower():
+        return "⚠️ Tu clave de Gemini devolvió **402 (créditos agotados en AI Studio)**. Cambia de clave o usa Groq/OpenAI en Ajustes. Respuesta generada con análisis local del repo."
+    if '401' in msg or '403' in msg:
+        return "⚠️ API Key rechazada o sin permisos. Revisa Ajustes. Respuesta generada con análisis local del repo."
+    if '429' in msg:
+        return "⚠️ Cuota de API alcanzada (`429`). Respuesta generada con análisis local del repo."
+    return "⚠️ No se pudo obtener respuesta de la IA externa en este instante. Respuesta generada con análisis local del repo."
+
+
+def _extract_symbols_from_snippets(snippets: List[Dict[str, str]]) -> List[str]:
+    symbols: List[str] = []
+    for fs in snippets:
+        found = re.findall(r'^(?:def |async def |class |export (?:interface|type|const|function) )([A-Za-z0-9_]+)', fs['content'], flags=re.MULTILINE)
+        if found:
+            symbols.append(f"`{fs['path']}` ({', '.join(found[:4])})")
+    return symbols
+
+
+def _build_domain_starter_snippet(task: Dict[str, Any], repo_ctx: Dict[str, Any]) -> str:
+    """Genera un snippet inicial útil y real acorde al tipo de tarea (sin volcar READMEs)."""
+    text = f"{task.get('title', '')} {task.get('description', '')} {task.get('epic', '')}".lower()
+    paths = " ".join(repo_ctx.get("treePreview", [])).lower()
+    is_python = '.py' in paths or any(k in text for k in ['pydantic', 'fastapi', 'sqlite', 'sqlalchemy', 'python'])
+
+    if any(k in text for k in ['esquema', 'datos', 'dto', 'pydantic', 'validacion', 'validación', 'tabla', 'bd', 'modelo', 'acceso']):
+        if is_python:
+            return (
+                "# 1) Contrato Pydantic (models.py) + 2) Acceso seguro (db_helpers.py)\n"
+                "from pydantic import BaseModel, Field\n"
+                "from fastapi import HTTPException\n\n"
+                "class ItemCreate(BaseModel):\n"
+                "    name: str = Field(min_length=2, max_length=120)\n\n"
+                "def get_item_or_404(cursor, item_id: str) -> dict:\n"
+                "    row = cursor.execute('SELECT * FROM items WHERE id = ?', (item_id,)).fetchone()\n"
+                "    if not row:\n"
+                "        raise HTTPException(status_code=404, detail='Registro no encontrado')\n"
+                "    return dict(row)"
+            )
+        return (
+            "export interface ItemDTO {\n"
+            "  id: string;\n"
+            "  name: string;\n"
+            "}\n\n"
+            "export function validateItemInput(name: string): string {\n"
+            "  const clean = name.trim();\n"
+            "  if (clean.length < 2) throw new Error('Nombre demasiado corto');\n"
+            "  return clean;\n"
+            "}"
         )
 
-    return f"""PROYECTO:
-- Nombre: "{project.get('name', 'General') if project else 'General'}"
-- Descripción: "{project.get('description', '') if project else ''}"
-- Tareas hermanas en este proyecto (contexto de arquitectura/progreso): {siblings_txt}
+    if any(k in text for k in ['auth', 'login', 'jwt', 'usuario', 'permiso', 'sesion', 'sesión']):
+        return (
+            "from fastapi import Depends, HTTPException, Header\n\n"
+            "def require_current_user(authorization: str = Header(...)) -> str:\n"
+            "    if not authorization.startswith('Bearer '):\n"
+            "        raise HTTPException(status_code=401, detail='Token requerido')\n"
+            "    token = authorization.removeprefix('Bearer ').strip()\n"
+            "    # Validar firma/expiración y devolver user_id\n"
+            "    return token"
+        )
 
-TAREA ACTIVA:
-- Épica / Módulo: "{task.get('epic', 'General')}"
-- Título: "{task.get('title')}"
-- Descripción: "{task.get('description', '')}"
-- Subtareas actuales: {json.dumps([s.get('title') for s in (task.get('subtasks') or [])], ensure_ascii=False)}
-- Tiempo estimado: {task.get('estimatedMinutes', 45)} min
+    if any(k in text for k in ['ui', 'interfaz', 'componente', 'pantalla', 'vista', 'react', 'formulario']):
+        return (
+            "const [loading, setLoading] = useState(false);\n"
+            "const [error, setError] = useState<string | null>(null);\n\n"
+            "const handleSubmit = async () => {\n"
+            "  setLoading(true); setError(null);\n"
+            "  try { /* llamada a api.* */ } catch (e) { setError('Error al guardar'); }\n"
+            "  finally { setLoading(false); }\n"
+            "};"
+        )
 
-CÓDIGO / ESTRUCTURA DEL REPOSITORIO:
-{repo_block}"""
+    return (
+        "# Estructura modular recomendada:\n"
+        "# 1. Validar entrada (Pydantic / TypeScript)\n"
+        "# 2. Ejecutar lógica en servicio aislado\n"
+        "# 3. Persistir / devolver respuesta tipada con manejo explícito de errores"
+    )
+
+
+def _infer_edge_cases(task: Dict[str, Any]) -> List[str]:
+    text = f"{task.get('title', '')} {task.get('description', '')} {task.get('epic', '')}".lower()
+    if any(k in text for k in ['esquema', 'datos', 'dto', 'pydantic', 'validacion', 'validación', 'tabla', 'bd', 'modelo', 'acceso']):
+        return [
+            "ID inexistente al consultar/actualizar/borrar → devolver `404` limpio en lugar de `500`.",
+            "Campos vacíos, tipos erróneos o rangos inválidos → validación estricta (`422`) antes de tocar SQLite.",
+            "JSON corrupto o nulo en columnas serializadas (como `subtasks`) → parseo seguro con fallback `[]`.",
+            "Restricciones de clave foránea (`ON DELETE CASCADE`) y migración segura si la tabla ya existe.",
+        ]
+    if any(k in text for k in ['auth', 'login', 'jwt', 'permiso', 'rol']):
+        return [
+            "Email duplicado en registro (`409`) y credenciales inválidas sin revelar qué campo falló (`401`).",
+            "Token expirado, malformado o ausente (`401`), y usuario sin permisos (`403`).",
+        ]
+    if any(k in text for k in ['ui', 'interfaz', 'componente', 'pantalla', 'vista', 'react', 'formulario']):
+        return [
+            "Evitar doble envío bloqueando el botón mientras `loading === true`.",
+            "Estado vacío (0 elementos), textos largos con `truncate` y error visible si falla la API.",
+        ]
+    return [
+        "Entradas vacías o nulas y timeouts en llamadas externas.",
+        "Errores HTTP claros (`400`/`404`) y rollback si falla una operación múltiple.",
+    ]
 
 
 async def get_task_action_plan(task: Dict[str, Any], project: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -63,43 +162,31 @@ async def get_task_action_plan(task: Dict[str, Any], project: Optional[Dict[str,
     )
 
     context_block = _build_project_and_repo_context_block(task, project, sibling_tasks, repo_ctx)
-    prompt = f"""Actúa como Staff Software Engineer y Tech Lead.
-El programador necesita resolver esta tarea SIN bloqueos y con criterio técnico real:
+    prompt = (
+        f"{context_block}\n\n"
+        "Da una guía técnica concreta de cómo resolverlo (flujo, contratos, archivos reales del repo y snippet).\n"
+        'Responde SOLO JSON: {"summary":"1-2 frases","architectureNotes":"cómo resolverlo y flujo",'
+        '"steps":["1. ...","2. ..."],"filesToTouch":["ruta"],"pitfall":"trampa concreta","quickSnippet":"código max 12 líneas"}'
+    )
 
-{context_block}
-
-Explica CONCRETAMENTE cómo resolver el problema (flujo de datos, contratos/tipos, validaciones, qué reutilizar del repo si hay archivos disponibles) y da un ejemplo o esqueleto útil en `quickSnippet`.
-Responde EXCLUSIVAMENTE con un JSON válido:
-{{
-  "summary": "Enfoque técnico directo en 1-2 frases.",
-  "architectureNotes": "Explicación concreta de cómo resolverlo: flujo entre capas, datos de entrada/salida, casos borde y cómo encaja con el proyecto.",
-  "steps": [
-    "1. ...",
-    "2. ...",
-    "3. ...",
-    "4. ..."
-  ],
-  "filesToTouch": ["rutas reales del repo si existen o rutas sugeridas"],
-  "pitfall": "Error técnico concreto donde suele perderse tiempo en esta tarea.",
-  "quickSnippet": "// Código o firma inicial concreta (máx 15 líneas)"
-}}"""
-
-    try:
-        raw = await query_llm(prompt, "Staff Software Engineer pragmático y directo.", max_tokens=2200)
-        data = extract_json_block(raw, expect_array=False)
-        if isinstance(data, dict) and data.get("steps"):
-            return {
-                "summary": str(data.get("summary", "")),
-                "architectureNotes": str(data.get("architectureNotes", "")),
-                "steps": [str(s) for s in data.get("steps", [])],
-                "filesToTouch": [str(f) for f in data.get("filesToTouch", [])],
-                "pitfall": str(data.get("pitfall", "")),
-                "quickSnippet": str(data.get("quickSnippet", "")),
-                "repoContextUsed": bool(repo_ctx.get("connected")),
-                "repoLabel": repo_ctx.get("repoLabel") if repo_ctx.get("connected") else None,
-            }
-    except Exception:
-        pass
+    llm_notice = ""
+    if settings.get('apiKey', '').strip():
+        try:
+            raw = await query_llm(prompt, "Staff Software Engineer pragmático. Responde solo JSON.", max_tokens=1100, json_mode=True)
+            data = extract_json_block(raw, expect_array=False)
+            if isinstance(data, dict) and data.get("steps"):
+                return {
+                    "summary": str(data.get("summary", "")),
+                    "architectureNotes": str(data.get("architectureNotes", "")),
+                    "steps": [str(s) for s in data.get("steps", [])],
+                    "filesToTouch": [str(f) for f in data.get("filesToTouch", [])],
+                    "pitfall": str(data.get("pitfall", "")),
+                    "quickSnippet": str(data.get("quickSnippet", "")),
+                    "repoContextUsed": bool(repo_ctx.get("connected")),
+                    "repoLabel": repo_ctx.get("repoLabel") if repo_ctx.get("connected") else None,
+                }
+        except Exception as exc:
+            llm_notice = _format_llm_error_notice(exc)
 
     existing_subtasks = task.get('subtasks') or []
     fallback_steps = (
@@ -114,26 +201,27 @@ Responde EXCLUSIVAMENTE con un JSON válido:
     )
 
     repo_files = [fs["path"] for fs in repo_ctx.get("fileSnippets", [])] or repo_ctx.get("treePreview", [])[:4]
+    symbols = _extract_symbols_from_snippets(repo_ctx.get("fileSnippets", []))
     done_siblings = [s["title"] for s in sibling_tasks if s.get("status") == "completed"][:3]
     arch_parts = [
         f"Encaja dentro de la épica '{task.get('epic', 'General')}' del proyecto '{project.get('name', 'General') if project else 'General'}'."
     ]
     if done_siblings:
         arch_parts.append(f"Ya tienes resuelto previamente: {', '.join(done_siblings)}.")
-    if repo_ctx.get("connected"):
-        arch_parts.append(
-            f"En tu repo {repo_ctx.get('repoLabel')} ({repo_ctx.get('language') or 'código'}) los archivos más cercanos por nombre son: {', '.join(repo_files[:3])}."
-        )
-    else:
-        arch_parts.append("Consejo: divide la solución en contrato de datos -> lógica pura -> conexión con API/UI -> validación de errores.")
+    if symbols:
+        arch_parts.append(f"Símbolos relevantes detectados en tu repo: {'; '.join(symbols)}.")
+    elif repo_ctx.get("connected"):
+        arch_parts.append(f"Archivos más cercanos en {repo_ctx.get('repoLabel')}: {', '.join(repo_files[:3])}.")
+    if llm_notice:
+        arch_parts.append(llm_notice)
 
     return {
         "summary": f"Plan técnico para '{task.get('title')}' ({task.get('estimatedMinutes', 45)}m) conectado al contexto de tu proyecto.",
         "architectureNotes": " ".join(arch_parts),
         "steps": fallback_steps,
         "filesToTouch": repo_files if repo_files else ["Módulo de lógica principal", "Tipos / Esquemas / Tests"],
-        "pitfall": "Evita sobreingeniería o refactorizar partes no relacionadas; haz funcionar primero el caso principal de extremo a extremo.",
-        "quickSnippet": "",
+        "pitfall": " | ".join(_infer_edge_cases(task)[:2]),
+        "quickSnippet": _build_domain_starter_snippet(task, repo_ctx),
         "repoContextUsed": bool(repo_ctx.get("connected")),
         "repoLabel": repo_ctx.get("repoLabel") if repo_ctx.get("connected") else None,
     }
@@ -157,58 +245,62 @@ async def ask_task_technical_question(
 
     context_block = _build_project_and_repo_context_block(task, project, sibling_tasks, repo_ctx)
     history_block = "\n".join(
-        f"{'Programador' if h['role'] == 'user' else 'Tech Lead'}: {h['content']}"
-        for h in history[-6:]
+        f"{'U' if h['role'] == 'user' else 'A'}: {h['content'][:240]}"
+        for h in history[-4:]
     )
 
-    prompt = f"""Eres un Staff Software Engineer ayudando a resolver un problema técnico concreto dentro de una tarea.
+    prompt = (
+        f"{context_block}\n"
+        f"{f'HISTORIAL:\n{history_block}\n' if history_block else ''}"
+        f'PREGUNTA: "{question}"\n'
+        'Responde con precisión técnica citando archivos/símbolos reales del repo si hay y código útil.\n'
+        'Responde SOLO JSON: {"answer":"explicación en español","referencedFiles":["ruta"],"codeSnippet":"código opcional"}'
+    )
 
-{context_block}
+    llm_notice = ""
+    if settings.get('apiKey', '').strip():
+        try:
+            raw = await query_llm(prompt, "Staff Software Engineer concreto. Responde solo JSON.", max_tokens=1000, json_mode=True)
+            data = extract_json_block(raw, expect_array=False)
+            if isinstance(data, dict) and data.get("answer"):
+                return {
+                    "answer": str(data["answer"]),
+                    "referencedFiles": [str(f) for f in (data.get("referencedFiles") or [])][:6],
+                    "codeSnippet": str(data.get("codeSnippet") or ""),
+                    "repoUsed": bool(repo_ctx.get("connected")),
+                    "repoLabel": repo_ctx.get("repoLabel") if repo_ctx.get("connected") else None,
+                }
+        except Exception as exc:
+            llm_notice = _format_llm_error_notice(exc)
 
-Historial reciente de la consulta:
-{history_block or '(Primera pregunta)'}
-
-Pregunta del programador:
-"{question}"
-
-Responde con precisión técnica:
-- Explica exactamente CÓMO resolverlo en la práctica (arquitectura, flujo de datos, funciones/endpoints concretos).
-- Si hay archivos reales del repositorio arriba, cítalos explícitamente y respeta su stack y convenciones.
-- Incluye un ejemplo de código (`codeSnippet`) si ayuda a desbloquearlo rápido.
-
-Responde EXCLUSIVAMENTE con un JSON válido:
-{{
-  "answer": "Explicación clara y técnica en español.",
-  "referencedFiles": ["ruta/archivo1.py"],
-  "codeSnippet": "// Código concreto opcional"
-}}"""
-
-    try:
-        raw = await query_llm(prompt, "Staff Software Engineer mentor, práctico y concreto.", max_tokens=2400)
-        data = extract_json_block(raw, expect_array=False)
-        if isinstance(data, dict) and data.get("answer"):
-            return {
-                "answer": str(data["answer"]),
-                "referencedFiles": [str(f) for f in (data.get("referencedFiles") or [])][:6],
-                "codeSnippet": str(data.get("codeSnippet") or ""),
-                "repoUsed": bool(repo_ctx.get("connected")),
-                "repoLabel": repo_ctx.get("repoLabel") if repo_ctx.get("connected") else None,
-            }
-    except Exception:
-        pass
-
-    # Fallback local inteligente usando contexto real del proyecto y archivos del repo
+    # Fallback local inteligente diferenciado por tipo de pregunta
     matched_files = [fs["path"] for fs in repo_ctx.get("fileSnippets", [])]
+    symbols = _extract_symbols_from_snippets(repo_ctx.get("fileSnippets", []))
     lower_q = question.lower()
     proj_name = project.get('name', 'General') if project else 'General'
     proj_desc = project.get('description', '') if project else ''
     same_epic = [s["title"] for s in sibling_tasks if s.get("epic") == task.get("epic")][:4]
     subs = [s.get("title") for s in (task.get("subtasks") or []) if s.get("title")]
 
-    if any(k in lower_q for k in ['de que va', 'de qué va', 'qué es', 'que es', 'explica', 'resumen', 'objetivo']):
+    snippet_out = ""
+    if any(k in lower_q for k in ['ejemplo', 'código', 'codigo', 'snippet', 'empezar']):
         lines = [
-            f"**{task.get('title')}** forma parte de la épica **{task.get('epic', 'General')}** dentro de *{proj_name}*."
+            f"Aquí tienes un punto de partida concreto para **{task.get('title')}** en *{proj_name}*:"
         ]
+        if matched_files:
+            lines.append(f"• Puedes integrarlo directamente sobre `{'`, `'.join(matched_files[:3])}`.")
+        if symbols:
+            lines.append(f"• Símbolos detectados en tu código: {'; '.join(symbols)}.")
+        snippet_out = _build_domain_starter_snippet(task, repo_ctx)
+    elif any(k in lower_q for k in ['archivo', 'tocar', 'caso', 'límite', 'limite', 'validar', 'edge']):
+        lines = [f"**Archivos a revisar y casos límite** para **{task.get('title')}**:"]
+        if matched_files:
+            lines.append("• Archivos del repo más relevantes:\n" + "\n".join(f"  - `{f}`" for f in matched_files))
+        if symbols:
+            lines.append(f"• Funciones/clases encontradas: {'; '.join(symbols)}.")
+        lines.append("• Casos límite obligatorios a validar:\n" + "\n".join(f"  - {ec}" for ec in _infer_edge_cases(task)))
+    elif any(k in lower_q for k in ['de que va', 'de qué va', 'qué es', 'que es', 'explica', 'resumen', 'objetivo']):
+        lines = [f"**{task.get('title')}** forma parte de la épica **{task.get('epic', 'General')}** dentro de *{proj_name}*."]
         if proj_desc:
             lines.append(f"• Contexto del proyecto: {proj_desc}")
         if task.get("description"):
@@ -216,34 +308,24 @@ Responde EXCLUSIVAMENTE con un JSON válido:
         if subs:
             lines.append("• Desglose concreto:\n" + "\n".join(f"  - {s}" for s in subs))
         if same_epic:
-            lines.append(f"• Tareas relacionadas en este mismo módulo: {', '.join(same_epic)}.")
-        if matched_files:
-            lines.append(f"• Código relacionado en tu repo: `{'`, `'.join(matched_files)}`.")
+            lines.append(f"• Tareas relacionadas en este módulo: {', '.join(same_epic)}.")
     else:
-        lines = [
-            f"Enfoque práctico para **{task.get('title')}** en *{proj_name}*:"
-        ]
+        lines = [f"Enfoque práctico para **{task.get('title')}** en *{proj_name}*:"]
         if matched_files:
-            lines.append(f"• Empieza abriendo `{'`, `'.join(matched_files[:3])}` para seguir las convenciones existentes del repo.")
+            lines.append(f"• Empieza revisando `{'`, `'.join(matched_files[:3])}` para seguir la estructura existente.")
         if subs:
-            lines.append("• Secuencia recomendada según tus subtareas:\n" + "\n".join(f"  {i+1}. {s}" for i, s in enumerate(subs)))
-        else:
-            lines.append(
-                f"• Pasos técnicos: 1) define el esquema/tipos base para {task.get('title')}, "
-                "2) implementa el caso principal aislado, 3) valida errores y relaciones/integridad."
-            )
-        if repo_ctx.get("error"):
-            lines.append(f"• Nota sobre el repo: {repo_ctx['error']}")
+            lines.append("• Orden de ejecución:\n" + "\n".join(f"  {i + 1}. {s}" for i, s in enumerate(subs)))
+        lines.append("• Casos límite clave:\n" + "\n".join(f"  - {ec}" for ec in _infer_edge_cases(task)[:2]))
 
-    snippet_preview = ""
-    if repo_ctx.get("fileSnippets"):
-        first_file = repo_ctx["fileSnippets"][0]
-        snippet_preview = f"// Extracto de {first_file['path']}\n" + "\n".join(first_file["content"].splitlines()[:18])
+    if repo_ctx.get("error"):
+        lines.append(f"• Nota sobre el repo: {repo_ctx['error']}")
+    if llm_notice:
+        lines.append(f"\n{llm_notice}")
 
     return {
         "answer": "\n".join(lines),
         "referencedFiles": matched_files,
-        "codeSnippet": snippet_preview,
+        "codeSnippet": snippet_out,
         "repoUsed": bool(repo_ctx.get("connected")),
         "repoLabel": repo_ctx.get("repoLabel") if repo_ctx.get("connected") else None,
     }
@@ -251,18 +333,14 @@ Responde EXCLUSIVAMENTE con un JSON válido:
 
 async def breakdown_task_into_subtasks(task: Dict[str, Any], project: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """Desglosa una tarea existente en 3 a 5 subtareas accionables y persistentes."""
-    prompt = f"""Actúa como Lead Software Engineer y Project Manager estilo Jira.
-Desglosa esta tarea técnica en 3 a 5 subtareas concretas y accionables (cada una realizable en 10-15 min):
-- Proyecto: "{project.get('name', 'General') if project else 'General'}" ({project.get('description', '') if project else ''})
-- Épica/Módulo: "{task.get('epic', 'General')}"
-- Tarea: "{task.get('title')}"
-- Descripción: "{task.get('description', '')}"
-
-Responde ÚNICAMENTE con un array JSON de strings o objetos {{"title": "..."}}:
-["Subtarea 1...", "Subtarea 2...", "Subtarea 3..."]"""
+    prompt = (
+        f'Proyecto: "{project.get("name", "General") if project else "General"}" | Épica: "{task.get("epic", "General")}"\n'
+        f'Tarea: "{task.get("title")}" | Desc: "{(task.get("description") or "")[:200]}"\n'
+        'Divide en 3-5 subtareas de 10-15m. Responde SOLO array JSON: ["Subtarea 1", "Subtarea 2"]'
+    )
 
     try:
-        raw = await query_llm(prompt, "Tech Lead pragmático que divide tareas en pasos claros.", max_tokens=1000)
+        raw = await query_llm(prompt, "Tech Lead pragmático. Responde solo JSON.", max_tokens=450, json_mode=True)
         items = extract_json_block(raw, expect_array=True)
         if isinstance(items, list) and items:
             return normalize_subtasks(items, prefix=f"{task.get('id', 'task')}-sub")
@@ -285,25 +363,15 @@ async def evaluate_task(
     velocity: float = 1.0,
 ) -> Dict[str, Any]:
     """Evalúa si una tarea aporta valor al MVP y ajusta su duración según velocidad histórica."""
-    prompt = f"""Eres un Project Manager implacable y experimentado para un desarrollador en solitario.
-El usuario quiere añadir esta tarea:
-- Título: "{title}"
-- Detalles: "{description}"
-- Proyecto: "{project.get('name', 'General') if project else 'General'}"
-- Ratio histórico de velocidad: {velocity}x (si es > 1.0, suele tardar más de lo estimado).
-
-Evalúa si aporta valor real para el MVP o es sobreingeniería, determina prioridad y minutos reales.
-Responde ÚNICAMENTE con un JSON:
-{{
-  "isUseful": true,
-  "verdict": "Explicación directa del PM de por qué es esencial o por qué huele a distracción",
-  "suggestedPriority": "high",
-  "estimatedMinutes": 45,
-  "breakdownWarning": ""
-}}"""
+    prompt = (
+        f'Proyecto: "{project.get("name", "General") if project else "General"}" | Velocidad: {velocity}x\n'
+        f'Tarea: "{title}" | Detalles: "{description[:220]}"\n'
+        'Evalúa utilidad MVP, prioridad y minutos reales. Responde SOLO JSON: '
+        '{"isUseful":true,"verdict":"1-2 frases","suggestedPriority":"high|medium|low|urgent","estimatedMinutes":45,"breakdownWarning":""}'
+    )
 
     try:
-        raw = await query_llm(prompt, "Project Manager técnico estricto, realista y pragmático.", max_tokens=1000)
+        raw = await query_llm(prompt, "PM técnico estricto. Responde solo JSON.", max_tokens=350, json_mode=True)
         data = extract_json_block(raw, expect_array=False)
         if isinstance(data, dict):
             prio = str(data.get("suggestedPriority", "medium")).lower()

@@ -6,6 +6,7 @@ import { ProcrastinatorButton } from '../ProcrastinatorButton';
 import { ProcrastinatorBadge } from '../ProcrastinatorBadge';
 import { ProcrastinatorInput } from '../ProcrastinatorInput';
 import { ProcrastinatorText } from '../ProcrastinatorText';
+import { FormattedText } from '../FormattedText';
 import {
   Send,
   Key,
@@ -232,7 +233,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
                   </div>
                 )}
 
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <FormattedText text={msg.content} inverse={msg.role === 'user'} />
 
                 {/* Tarjeta interactiva de Propuesta de Proyecto (Épicas + Tareas + Subtareas) */}
                 {proposal && proposal.tasks.length > 0 && (

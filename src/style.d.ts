@@ -141,6 +141,7 @@ export interface DesignStyles {
     h3: string;
     body: string;
     caption: string;
+    inlineCode: string;
   };
 }
 

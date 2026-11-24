@@ -13,6 +13,17 @@ release
 .env.local
 .env.*.local
 
+# Python y bases de datos locales (contienen claves y datos personales)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+backend/data/*.db
+*.db
+*.sqlite
+*.sqlite3
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
