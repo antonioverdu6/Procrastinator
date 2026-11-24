@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FolderKanban, GitBranch, Layers, Plus } from 'lucide-react';
+import { FolderKanban, GitBranch, Layers, Plus, Trash2 } from 'lucide-react';
 import { Project, ProjectPlanProposal, Subtask, Task } from '../../types';
 import { api } from '../../services/api';
 import { ProcrastinatorBox } from '../ProcrastinatorBox';
@@ -45,6 +45,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
   const [showNewTaskPanel, setShowNewTaskPanel] = useState(false);
   const [backlogGroupMode, setBacklogGroupMode] = useState<'epic' | 'flat'>('epic');
   const [breakingDownTaskId, setBreakingDownTaskId] = useState<string | null>(null);
+  const [confirmDeleteProjId, setConfirmDeleteProjId] = useState<string | null>(null);
+  const [deletingProjId, setDeletingProjId] = useState<string | null>(null);
 
   useEffect(() => {
     if (draftProposal) {
@@ -80,6 +82,23 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
       onRefreshData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (deletingProjId) return;
+    setDeletingProjId(projectId);
+    try {
+      await api.deleteProject(projectId);
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId('all');
+      }
+      setConfirmDeleteProjId(null);
+      onRefreshData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeletingProjId(null);
     }
   };
 
@@ -204,10 +223,49 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 <ProcrastinatorText variant="h3" className="truncate">
                   {proj.name}
                 </ProcrastinatorText>
-                <ProcrastinatorBadge variant="neutral">
-                  {completedCount}/{projTasks.length} {t.projects.doneCounter}
-                </ProcrastinatorBadge>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <ProcrastinatorBadge variant="neutral">
+                    {completedCount}/{projTasks.length} {t.projects.doneCounter}
+                  </ProcrastinatorBadge>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setConfirmDeleteProjId(confirmDeleteProjId === proj.id ? null : proj.id);
+                    }}
+                    className="p-1 text-[#94A3B8] hover:text-[#DC2626] hover:bg-[#FEE2E2] rounded-md transition-colors"
+                    title={t.projects.deleteProjectTitle}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </ProcrastinatorBox>
+
+              {confirmDeleteProjId === proj.id && (
+                <div
+                  onClick={e => e.stopPropagation()}
+                  className="mb-3 p-2 bg-[#FEF2F2] border border-[#FECACA] rounded-lg flex items-center justify-between gap-2 text-[11px]"
+                >
+                  <span className="text-[#991B1B] font-medium">{t.projects.confirmDeleteProject}</span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProject(proj.id)}
+                      disabled={deletingProjId === proj.id}
+                      className="px-2 py-0.5 bg-[#DC2626] text-white rounded font-semibold hover:bg-[#B91C1C] disabled:opacity-50"
+                    >
+                      {deletingProjId === proj.id ? t.projects.deletingProject : t.projects.confirmDeleteYes}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteProjId(null)}
+                      className="px-2 py-0.5 bg-white border border-[#E2E8F0] text-[#475569] rounded hover:bg-[#F8FAFC]"
+                    >
+                      {t.common.cancel}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <ProcrastinatorText variant="caption" className="line-clamp-2 h-8 mb-3 block">
                 {proj.description || t.common.noDescription}
