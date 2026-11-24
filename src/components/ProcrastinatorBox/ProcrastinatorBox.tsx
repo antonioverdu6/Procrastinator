@@ -27,7 +27,11 @@ export type BoxVariant =
   | 'modal-card'
   | 'chat-container'
   | 'chat-messages'
-  | 'chat-input-bar';
+  | 'chat-input-bar'
+  | 'epic-section'
+  | 'epic-header'
+  | 'subtask-row'
+  | 'proposal-card';
 
 export interface ProcrastinatorBoxProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: BoxVariant;
@@ -143,6 +147,18 @@ export const ProcrastinatorBox = forwardRef<HTMLDivElement, ProcrastinatorBoxPro
         break;
       case 'chat-input-bar':
         classes.push(styles.box.chatInputBar);
+        break;
+      case 'epic-section':
+        classes.push(styles.box.epicSection);
+        break;
+      case 'epic-header':
+        classes.push(styles.box.epicHeader);
+        break;
+      case 'subtask-row':
+        classes.push(styles.box.subtaskRow);
+        break;
+      case 'proposal-card':
+        classes.push(styles.box.proposalCard);
         break;
       default:
         break;

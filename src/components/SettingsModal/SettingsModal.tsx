@@ -124,6 +124,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </p>
         </ProcrastinatorBox>
 
+        {/* GitHub Token opcional */}
+        <ProcrastinatorBox>
+          <label className={styles.input.label}>GitHub Token (opcional, para repos privados)</label>
+          <input
+            type="password"
+            placeholder="ghp_... (déjalo vacío si tus repos son públicos)"
+            value={form.githubToken || ''}
+            onChange={e => setForm({ ...form, githubToken: e.target.value })}
+            className={styles.input.base}
+          />
+          <p className="text-[11px] text-[#94A3B8] mt-1">
+            Permite que la Guía Técnica lea archivos reales de tus repos privados en GitHub.
+          </p>
+        </ProcrastinatorBox>
+
         {/* Tono */}
         <ProcrastinatorBox>
           <label className={styles.input.label}>Exigencia del Copiloto</label>

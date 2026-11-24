@@ -102,6 +102,10 @@ export interface DesignStyles {
     chatContainer: string;
     chatMessages: string;
     chatInputBar: string;
+    epicSection: string;
+    epicHeader: string;
+    subtaskRow: string;
+    proposalCard: string;
   };
   card: {
     base: string;

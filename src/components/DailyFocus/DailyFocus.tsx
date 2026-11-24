@@ -210,6 +210,7 @@ export const DailyFocus: React.FC<DailyFocusProps> = ({
             project={getProject(activeTask.projectId)}
             onTaskCompleted={handleTaskCompleted}
             onTimeLogged={handleTimeLogged}
+            onTaskUpdated={onRefreshData}
           />
         </ProcrastinatorBox>
       ) : (

@@ -114,6 +114,10 @@ export const styles = {
     chatContainer: 'bg-white border border-[#E2E8F0] rounded-xl flex flex-col h-[calc(100vh-140px)] p-0 overflow-hidden',
     chatMessages: 'flex-1 overflow-y-auto p-4 space-y-3 bg-[#F8FAFC]',
     chatInputBar: 'p-3 bg-white border-t border-[#E2E8F0] flex gap-2',
+    epicSection: 'border border-[#E2E8F0] rounded-xl bg-white overflow-hidden',
+    epicHeader: 'px-4 py-2.5 bg-[#F8FAFC] border-b border-[#E2E8F0] flex items-center justify-between gap-2',
+    subtaskRow: 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-xs text-[#334155]',
+    proposalCard: 'mt-3 border border-[#CBD5E1] rounded-xl bg-[#F8FAFC] p-3.5 space-y-3',
   },
 
   // Tarjetas y Paneles (Estética plana nítida en blanco puro)

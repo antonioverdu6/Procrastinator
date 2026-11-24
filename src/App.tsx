@@ -7,7 +7,7 @@ import { Chatbot } from './components/Chatbot';
 import { SettingsModal } from './components/SettingsModal';
 import { ProcrastinatorBox } from './components/ProcrastinatorBox';
 import { api } from './services/api';
-import { Task, Project, UserSettings, ProductivityStats } from './types';
+import { Task, Project, UserSettings, ProductivityStats, ProjectPlanProposal } from './types';
 import { styles } from './style';
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -41,6 +41,7 @@ export const App: React.FC = () => {
   const [stats, setStats] = useState<ProductivityStats>(DEFAULT_STATS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBackendConnected, setIsBackendConnected] = useState(true);
+  const [draftPlanProposal, setDraftPlanProposal] = useState<ProjectPlanProposal | null>(null);
 
   const refreshData = async () => {
     try {
@@ -66,6 +67,11 @@ export const App: React.FC = () => {
     const interval = setInterval(refreshData, 10000); // Polling cada 10s para sincronización
     return () => clearInterval(interval);
   }, []);
+
+  const handleOpenPlannerWithProposal = (proposal: ProjectPlanProposal) => {
+    setDraftPlanProposal(proposal);
+    setCurrentTab('projects');
+  };
 
   return (
     <ProcrastinatorBox className={styles.layout.container}>
@@ -102,6 +108,8 @@ export const App: React.FC = () => {
             tasks={tasks}
             onRefreshData={refreshData}
             onOpenChat={() => setCurrentTab('chat')}
+            draftProposal={draftPlanProposal}
+            onClearDraftProposal={() => setDraftPlanProposal(null)}
           />
         </div>
 
@@ -114,6 +122,8 @@ export const App: React.FC = () => {
             settings={settings}
             onRefreshData={refreshData}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenPlannerWithProposal={handleOpenPlannerWithProposal}
+            onGoToProjects={() => setCurrentTab('projects')}
           />
         </div>
       </ProcrastinatorBox>

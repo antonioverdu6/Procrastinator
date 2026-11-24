@@ -1,8 +1,9 @@
 import sqlite3
 import os
-import json
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any
+
+from .lib.json_utils import safe_json_loads
 
 DB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
 os.makedirs(DB_DIR, exist_ok=True)
@@ -12,6 +13,30 @@ def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def _ensure_column(cursor, table: str, column: str, definition: str):
+    """Añade una columna a una tabla SQLite existente si aún no existe."""
+    cursor.execute(f'PRAGMA table_info({table})')
+    existing = {row['name'] for row in cursor.fetchall()}
+    if column not in existing:
+        cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column} {definition}')
+
+def row_to_task(row) -> Dict[str, Any]:
+    """Convierte una fila SQLite de tasks en dict deserializando subtasks."""
+    d = dict(row)
+    d['subtasks'] = safe_json_loads(d.get('subtasks'), [])
+    if not d.get('epic'):
+        d['epic'] = 'General'
+    return d
+
+def row_to_chat_message(row) -> Dict[str, Any]:
+    """Convierte una fila SQLite de chat_messages en dict con metadatos JSON."""
+    d = dict(row)
+    meta = safe_json_loads(d.pop('metadata', None), {})
+    for key in ('suggestedActions', 'planProposal', 'actionsTaken'):
+        if key in meta:
+            d[key] = meta[key]
+    return d
 
 def init_db():
     conn = get_connection()
@@ -26,9 +51,11 @@ def init_db():
         color TEXT DEFAULT '#2563EB',
         targetHours REAL DEFAULT 25.0,
         status TEXT DEFAULT 'active',
+        repoUrl TEXT DEFAULT '',
         createdAt TEXT NOT NULL
     )
     ''')
+    _ensure_column(cursor, 'projects', 'repoUrl', "TEXT DEFAULT ''")
 
     # Tareas
     cursor.execute('''
@@ -37,6 +64,8 @@ def init_db():
         projectId TEXT NOT NULL,
         title TEXT NOT NULL,
         description TEXT,
+        epic TEXT DEFAULT 'General',
+        subtasks TEXT DEFAULT '[]',
         estimatedMinutes INTEGER DEFAULT 45,
         actualMinutes INTEGER DEFAULT 0,
         status TEXT DEFAULT 'backlog',
@@ -49,6 +78,10 @@ def init_db():
         FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE
     )
     ''')
+
+    # Migraciones seguras para bases de datos ya existentes
+    _ensure_column(cursor, 'tasks', 'epic', "TEXT DEFAULT 'General'")
+    _ensure_column(cursor, 'tasks', 'subtasks', "TEXT DEFAULT '[]'")
 
     # Planes diarios
     cursor.execute('''
@@ -77,9 +110,11 @@ def init_db():
         id TEXT PRIMARY KEY,
         role TEXT NOT NULL,
         content TEXT NOT NULL,
-        timestamp TEXT NOT NULL
+        timestamp TEXT NOT NULL,
+        metadata TEXT DEFAULT '{}'
     )
     ''')
+    _ensure_column(cursor, 'chat_messages', 'metadata', "TEXT DEFAULT '{}'")
 
     # Configuración de usuario
     cursor.execute('''
@@ -92,9 +127,11 @@ def init_db():
         strictness TEXT DEFAULT 'balanced',
         pomodoroWorkMins INTEGER DEFAULT 45,
         pomodoroBreakMins INTEGER DEFAULT 10,
-        soundEnabled INTEGER DEFAULT 1
+        soundEnabled INTEGER DEFAULT 1,
+        githubToken TEXT DEFAULT ''
     )
     ''')
+    _ensure_column(cursor, 'settings', 'githubToken', "TEXT DEFAULT ''")
 
     # Insertar configuración por defecto si no existe
     cursor.execute('SELECT COUNT(*) as count FROM settings WHERE id = 1')

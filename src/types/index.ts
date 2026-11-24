@@ -1,6 +1,13 @@
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type TaskStatus = 'backlog' | 'scheduled_today' | 'in_progress' | 'completed' | 'deferred';
+export type PlanScope = 'mvp' | 'standard' | 'detailed';
+
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
 
 export interface Project {
   id: string;
@@ -10,7 +17,18 @@ export interface Project {
   deadline?: string;
   status: 'active' | 'paused' | 'completed';
   targetHours?: number;
+  repoUrl?: string;
   createdAt: string;
+}
+
+export interface RepoPreview {
+  connected: boolean;
+  repoLabel: string;
+  defaultBranch?: string;
+  language?: string;
+  filesCount: number;
+  sampleFiles: string[];
+  error?: string;
 }
 
 export interface Task {
@@ -18,6 +36,8 @@ export interface Task {
   projectId: string;
   title: string;
   description?: string;
+  epic?: string;
+  subtasks?: Subtask[];
   estimatedMinutes: number; // e.g. 45
   actualMinutes: number;    // cumulative actual time worked
   status: TaskStatus;
@@ -48,6 +68,27 @@ export interface WorkSession {
   completedSubgoal?: boolean;
 }
 
+export interface ProposedTask {
+  id: string;
+  epic: string;
+  title: string;
+  description: string;
+  estimatedMinutes: number;
+  priority: Priority;
+  difficulty: Difficulty;
+  subtasks?: Subtask[];
+}
+
+export interface ProjectPlanProposal {
+  projectName: string;
+  projectDescription: string;
+  targetHours: number;
+  scope: string;
+  tasks: ProposedTask[];
+  applied?: boolean;
+  createdProjectId?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -58,6 +99,8 @@ export interface ChatMessage {
     command: string;
     payload?: any;
   }[];
+  planProposal?: ProjectPlanProposal;
+  actionsTaken?: string[];
 }
 
 export interface UserSettings {
@@ -70,6 +113,7 @@ export interface UserSettings {
   pomodoroBreakMins: number; // 10
   soundEnabled: boolean;
   autoBreakdownTasks: boolean;
+  githubToken?: string;
 }
 
 export interface WeeklyActivityPoint {
@@ -114,10 +158,28 @@ export interface ProductivityStats {
 
 export interface TaskActionPlan {
   summary: string;
+  architectureNotes?: string;
   steps: string[];
   filesToTouch: string[];
   pitfall: string;
   quickSnippet?: string;
+  repoContextUsed?: boolean;
+  repoLabel?: string;
+}
+
+export interface TaskAskMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  referencedFiles?: string[];
+  codeSnippet?: string;
+}
+
+export interface TaskTechnicalAskResponse {
+  answer: string;
+  referencedFiles: string[];
+  codeSnippet?: string;
+  repoUsed: boolean;
+  repoLabel?: string;
 }
 
 export interface TaskPMEvaluation {
@@ -127,13 +189,3 @@ export interface TaskPMEvaluation {
   estimatedMinutes: number;
   breakdownWarning?: string;
 }
-
-export interface ProposedTask {
-  id: string;
-  title: string;
-  description: string;
-  estimatedMinutes: number;
-  priority: Priority;
-  difficulty: Difficulty;
-}
-
