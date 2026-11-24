@@ -178,7 +178,7 @@ def calculate_stats() -> Dict[str, Any]:
         else:
             break
 
-    # Actividad de últimos 7 días
+    # Actividad de últimos 7 días (priorizando work_sessions reales + tareas completadas)
     day_names = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
     weekly_activity = []
     for i in range(6, -1, -1):
@@ -187,9 +187,15 @@ def calculate_stats() -> Dict[str, Any]:
         weekday_idx = int(d.strftime('%w'))
         d_name = day_names[weekday_idx]
 
-        day_tasks = [t for t in all_tasks if (t['completedAt'] and t['completedAt'].startswith(d_str)) or (t['scheduledDate'] == d_str)]
+        day_sessions = [s for s in all_sessions if s['date'] == d_str]
+        session_mins = sum(s['durationMinutes'] for s in day_sessions)
+
+        day_completed = [t for t in all_tasks if t.get('completedAt') and t['completedAt'].startswith(d_str)]
+        day_tasks = [t for t in all_tasks if (t.get('completedAt') and t['completedAt'].startswith(d_str)) or (t.get('scheduledDate') == d_str)]
+
         planned_m = today_planned_minutes if d_str == today else int(round(settings['defaultDailyHours'] * 60))
-        actual_m = sum(t['actualMinutes'] for t in day_tasks)
+        # Si hay sesiones registradas ese día, usarlas; si no, usar minutos de tareas completadas ese día
+        actual_m = session_mins if session_mins > 0 else sum(t['actualMinutes'] or t['estimatedMinutes'] for t in day_completed)
         pct = min(150, int(round((actual_m / planned_m * 100)))) if planned_m > 0 else (100 if actual_m > 0 else 0)
 
         weekly_activity.append({
@@ -198,7 +204,8 @@ def calculate_stats() -> Dict[str, Any]:
             'plannedHours': round(planned_m / 60, 1),
             'actualHours': round(actual_m / 60, 1),
             'completionPercent': pct,
-            'tasksCount': len(day_tasks)
+            'tasksCount': len(day_tasks),
+            'completedTasks': len(day_completed),
         })
 
     # Distribución por prioridad
@@ -237,6 +244,37 @@ def calculate_stats() -> Dict[str, Any]:
             'percentage': pct
         })
 
+    # Progreso por Épica (Épicas cerradas vs en progreso)
+    proj_names = {p['id']: p['name'] for p in all_projects}
+    epic_buckets: Dict[tuple, List[Dict[str, Any]]] = {}
+    for t in all_tasks:
+        epic_name = (t.get('epic') or 'General').strip() or 'General'
+        key = (t['projectId'], epic_name)
+        epic_buckets.setdefault(key, []).append(t)
+
+    epic_progress = []
+    for (pid, epic_name), e_tasks in epic_buckets.items():
+        done_tasks = [t for t in e_tasks if t['status'] == 'completed']
+        total_cnt = len(e_tasks)
+        done_cnt = len(done_tasks)
+        worked_mins = sum((t['actualMinutes'] or t['estimatedMinutes']) if t['status'] == 'completed' else t['actualMinutes'] for t in e_tasks)
+        is_closed = total_cnt > 0 and done_cnt == total_cnt
+        pct = int(round((done_cnt / total_cnt) * 100)) if total_cnt > 0 else 0
+        epic_progress.append({
+            'projectId': pid,
+            'projectName': proj_names.get(pid, 'General'),
+            'epic': epic_name,
+            'completedTasks': done_cnt,
+            'totalTasks': total_cnt,
+            'workedHours': round(worked_mins / 60, 1),
+            'closed': is_closed,
+            'percentage': pct,
+        })
+
+    epic_progress.sort(key=lambda e: (e['closed'], e['percentage'], e['workedHours']), reverse=True)
+    epics_closed = len([e for e in epic_progress if e['closed']])
+    epics_total = len(epic_progress)
+
     conn.close()
 
     total_hours_completed = round(sum(t['actualMinutes'] or t['estimatedMinutes'] for t in all_tasks if t['status'] == 'completed') / 60, 1)
@@ -251,9 +289,12 @@ def calculate_stats() -> Dict[str, Any]:
         'todayCompletionRate': today_completion_rate,
         'procrastinationScore': procrastination_score,
         'totalTasksFinished': total_finished,
+        'epicsClosed': epics_closed,
+        'epicsTotal': epics_total,
         'accuracyRatio': accuracy_ratio,
         'weeklyActivity': weekly_activity,
         'projectProgress': project_progress,
+        'epicProgress': epic_progress,
         'priorityDistribution': priority_distribution,
         'difficultyDistribution': difficulty_distribution
     }

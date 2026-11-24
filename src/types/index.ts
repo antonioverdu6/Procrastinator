@@ -130,6 +130,18 @@ export interface WeeklyActivityPoint {
   actualHours: number;
   completionPercent?: number;
   tasksCount?: number;
+  completedTasks?: number;
+}
+
+export interface EpicProgressPoint {
+  projectId: string;
+  projectName: string;
+  epic: string;
+  completedTasks: number;
+  totalTasks: number;
+  workedHours: number;
+  closed: boolean;
+  percentage: number;
 }
 
 export interface ProjectProgressPoint {
@@ -156,9 +168,12 @@ export interface ProductivityStats {
   todayCompletionRate: number; // 0 - 100%
   procrastinationScore: number; // 0 - 100 (100 = high focus, low deferred)
   totalTasksFinished: number;
+  epicsClosed?: number;
+  epicsTotal?: number;
   accuracyRatio: number; // actual / estimated
   weeklyActivity?: WeeklyActivityPoint[];
   projectProgress?: ProjectProgressPoint[];
+  epicProgress?: EpicProgressPoint[];
   priorityDistribution?: DistributionPoint[];
   difficultyDistribution?: DistributionPoint[];
 }

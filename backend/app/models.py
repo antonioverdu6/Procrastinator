@@ -232,6 +232,9 @@ class WeeklyActivityItem(BaseModel):
     dayName: str
     plannedHours: float
     actualHours: float
+    completionPercent: int = 0
+    tasksCount: int = 0
+    completedTasks: int = 0
 
 class ProjectProgressItem(BaseModel):
     id: str
@@ -240,6 +243,22 @@ class ProjectProgressItem(BaseModel):
     completedHours: float
     totalHours: float
     percentage: int
+
+class EpicProgressItem(BaseModel):
+    projectId: str
+    projectName: str
+    epic: str
+    completedTasks: int
+    totalTasks: int
+    workedHours: float
+    closed: bool
+    percentage: int
+
+class PriorityDistributionItem(BaseModel):
+    priority: str
+    label: str
+    count: int
+    color: str
 
 class StatsResponse(BaseModel):
     streakDays: int
@@ -250,6 +269,10 @@ class StatsResponse(BaseModel):
     todayCompletionRate: int
     procrastinationScore: int
     totalTasksFinished: int
+    epicsClosed: int = 0
+    epicsTotal: int = 0
     accuracyRatio: float
     weeklyActivity: List[WeeklyActivityItem]
     projectProgress: List[ProjectProgressItem]
+    epicProgress: List[EpicProgressItem] = Field(default_factory=list)
+    priorityDistribution: List[PriorityDistributionItem] = Field(default_factory=list)

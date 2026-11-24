@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, Clock, Flame, Target } from 'lucide-react';
+import { CheckCircle2, Clock, Flame, Layers, Target } from 'lucide-react';
 import { ProductivityStats } from '../../types';
 import { ProcrastinatorBox } from '../ProcrastinatorBox';
 import { ProcrastinatorBadge } from '../ProcrastinatorBadge';
@@ -12,15 +12,49 @@ interface DashboardKpisProps {
 
 export const DashboardKpis: React.FC<DashboardKpisProps> = ({ stats }) => {
   const { t } = useI18n();
-
-  const getScoreBadge = (score: number) => {
-    if (score >= 80) return <ProcrastinatorBadge variant="success">{t.dashboard.scoreExcellent}</ProcrastinatorBadge>;
-    if (score >= 60) return <ProcrastinatorBadge variant="warning">{t.dashboard.scoreMedium}</ProcrastinatorBadge>;
-    return <ProcrastinatorBadge variant="danger">{t.dashboard.scoreLow}</ProcrastinatorBadge>;
-  };
+  const epicsClosed = stats.epicsClosed ?? 0;
+  const epicsTotal = stats.epicsTotal ?? 0;
 
   return (
     <ProcrastinatorBox className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Horas Curradas (7d) */}
+      <ProcrastinatorBox variant="card" className="space-y-2">
+        <ProcrastinatorBox className="flex items-center justify-between text-[#64748B]">
+          <span className="text-xs font-semibold uppercase tracking-wider">{t.dashboard.weeklyHoursTitle}</span>
+          <Clock className="w-4 h-4 text-[#2563EB]" />
+        </ProcrastinatorBox>
+        <ProcrastinatorBox className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
+          {stats.weeklyHoursCompleted}{' '}
+          <span className="text-sm font-normal text-[#64748B]">{t.dashboard.hoursUnit}</span>
+        </ProcrastinatorBox>
+        <ProcrastinatorText variant="caption" className="block text-[#64748B]">
+          {t.dashboard.historicalTotal} <strong>{stats.totalHoursCompleted}h</strong>
+        </ProcrastinatorText>
+      </ProcrastinatorBox>
+
+      {/* Épicas Cerradas */}
+      <ProcrastinatorBox variant="card" className="space-y-2">
+        <ProcrastinatorBox className="flex items-center justify-between text-[#64748B]">
+          <span className="text-xs font-semibold uppercase tracking-wider">{t.dashboard.epicsClosedTitle}</span>
+          <Layers className="w-4 h-4 text-[#16A34A]" />
+        </ProcrastinatorBox>
+        <ProcrastinatorBox className="flex items-baseline gap-2">
+          <span className="text-3xl font-extrabold text-[#0F172A] tracking-tight">{epicsClosed}</span>
+          <span className="text-xs font-medium text-[#64748B]">
+            {t.dashboard.epicsOfTotal} {epicsTotal}
+          </span>
+        </ProcrastinatorBox>
+        <ProcrastinatorBox>
+          <ProcrastinatorBadge variant={epicsClosed > 0 ? 'success' : 'neutral'}>
+            <CheckCircle2 className="w-3 h-3" />
+            <span>
+              {stats.totalTasksFinished} {t.dashboard.tasksCompletedBadge}
+            </span>
+          </ProcrastinatorBadge>
+        </ProcrastinatorBox>
+      </ProcrastinatorBox>
+
+      {/* Racha Activa */}
       <ProcrastinatorBox variant="card" className="space-y-2">
         <ProcrastinatorBox className="flex items-center justify-between text-[#64748B]">
           <span className="text-xs font-semibold uppercase tracking-wider">{t.dashboard.streakTitle}</span>
@@ -34,34 +68,7 @@ export const DashboardKpis: React.FC<DashboardKpisProps> = ({ stats }) => {
         </ProcrastinatorText>
       </ProcrastinatorBox>
 
-      <ProcrastinatorBox variant="card" className="space-y-2">
-        <ProcrastinatorBox className="flex items-center justify-between text-[#64748B]">
-          <span className="text-xs font-semibold uppercase tracking-wider">{t.dashboard.antiFrictionTitle}</span>
-          <Award className="w-4 h-4 text-[#2563EB]" />
-        </ProcrastinatorBox>
-        <ProcrastinatorBox className="flex items-baseline gap-2">
-          <span className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
-            {stats.procrastinationScore}
-          </span>
-          <span className="text-xs font-medium text-[#64748B]">/100</span>
-        </ProcrastinatorBox>
-        <ProcrastinatorBox>{getScoreBadge(stats.procrastinationScore)}</ProcrastinatorBox>
-      </ProcrastinatorBox>
-
-      <ProcrastinatorBox variant="card" className="space-y-2">
-        <ProcrastinatorBox className="flex items-center justify-between text-[#64748B]">
-          <span className="text-xs font-semibold uppercase tracking-wider">{t.dashboard.weeklyHoursTitle}</span>
-          <Clock className="w-4 h-4 text-[#16A34A]" />
-        </ProcrastinatorBox>
-        <ProcrastinatorBox className="text-3xl font-extrabold text-[#0F172A] tracking-tight">
-          {stats.weeklyHoursCompleted}{' '}
-          <span className="text-sm font-normal text-[#64748B]">{t.dashboard.hoursUnit}</span>
-        </ProcrastinatorBox>
-        <ProcrastinatorText variant="caption" className="block text-[#64748B]">
-          {t.dashboard.historicalTotal} <strong>{stats.totalHoursCompleted}h</strong>
-        </ProcrastinatorText>
-      </ProcrastinatorBox>
-
+      {/* Precisión Estimada */}
       <ProcrastinatorBox variant="card" className="space-y-2">
         <ProcrastinatorBox className="flex items-center justify-between text-[#64748B]">
           <span className="text-xs font-semibold uppercase tracking-wider">{t.dashboard.accuracyTitle}</span>
