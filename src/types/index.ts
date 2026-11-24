@@ -114,6 +114,13 @@ export interface UserSettings {
   soundEnabled: boolean;
   autoBreakdownTasks: boolean;
   githubToken?: string;
+  language?: 'es' | 'en';
+  hasApiKey?: boolean;
+  apiKeyPreview?: string;
+  hasGithubToken?: boolean;
+  githubTokenPreview?: string;
+  clearApiKey?: boolean;
+  clearGithubToken?: boolean;
 }
 
 export interface WeeklyActivityPoint {

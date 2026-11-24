@@ -1,153 +1,132 @@
 # Procrastinator
 
-> Aplicación de escritorio local para Windows pensada para programadores. Reparte tus desarrollos en objetivos diarios alcanzables, planifica proyectos por épicas y subtareas al estilo Jira/Azure DevOps, gestiona tu energía con un Copiloto PM y analiza tu rendimiento real con dashboards.
+> Local Windows desktop & web application designed for developers. Breaks software projects into achievable daily focus blocks, plans projects with Jira/Azure DevOps-style epics and subtasks, adapts your schedule via an AI Project Manager Copilot, and tracks real performance metrics.
 
 ---
 
-## ⚡ Inicio Rápido
+## ⚡ Quick Start
 
-> **Requisitos previos:** Python 3.10+ (`pip install -r backend/requirements.txt`) y Node.js (`npm.cmd install`).
+> **Prerequisites:** Python 3.10+ (`pip install -r backend/requirements.txt`) and Node.js (`npm.cmd install`).
 
-### Opción 1: Lanzadores Directos (Recomendado)
-* **Modo Escritorio (FastAPI + Electron):** haz doble clic en **`iniciar.bat`**.
-* **Modo Web (FastAPI + Vite):** haz doble clic en **`iniciar-web.bat`**.
+### Option 1: One-Click Launchers (Windows)
+* **Desktop Mode (FastAPI + Electron):** double-click **`iniciar.bat`**.
+* **Web Mode (FastAPI + Vite):** double-click **`iniciar-web.bat`**.
 
-### Opción 2: Desde la Terminal (PowerShell / CMD)
+### Option 2: From Terminal (PowerShell / CMD)
 
-#### Todo en uno (Desktop Electron + FastAPI + Vite)
+#### All-in-one (Electron Desktop + FastAPI + Vite)
 ```powershell
 npm.cmd run electron:dev
 ```
 
-#### Modo separado en 2 terminales (útil en desarrollo web)
-* **Terminal 1 — Backend FastAPI** (`http://127.0.0.1:8000` | Swagger en `/docs`):
+#### Separate Terminals (ideal for web development)
+* **Terminal 1 — FastAPI Backend** (`http://127.0.0.1:8000` | Swagger UI at `/docs`):
   ```powershell
   python backend/run.py
   ```
-* **Terminal 2 — Frontend Web (Vite + React)** (`http://localhost:5173`):
+* **Terminal 2 — Vite + React Frontend** (`http://localhost:5173`):
   ```powershell
   npm.cmd run dev
   ```
 
 ---
 
-## 🎯 ¿Cómo Funciona?
+## 🎯 How It Works
 
-Procrastinator combate la sobrecarga mental mediante tres pilares:
+Procrastinator fights developer overwhelm through three core pillars:
 
-| Pilar | Funcionamiento |
+| Pillar | Behavior |
 | :--- | :--- |
-| **Objetivo Diario** | Oculta el backlog infinito y selecciona solo las tareas que caben en tu jornada habitual (por defecto 2.5 horas en bloques de 30-45 min). |
-| **Copiloto PM & Jornada** | Desglosa proyectos completos por épicas y subtareas desde el chat, añade tareas al backlog o ajusta tu jornada al vuelo (*"Tengo 1 hora extra"*, *"Hoy solo puedo 45 minutos"*). |
-| **Dashboard de Rendimiento** | Gráficos reales de horas planificadas frente a horas dedicadas, cálculo de racha diaria y ratio de precisión en tus estimaciones. |
+| **Daily Focus** | Hides your infinite backlog and surfaces only the micro-tasks that fit your daily capacity (default: 2.5 hours in 30–45 min blocks). |
+| **PM & Schedule Copilot** | Breaks down full projects into epics and subtasks directly in chat, edits/migrates existing backlog tasks, summarizes projects, or adjusts today's capacity (*"+1 extra hour"*, *"Only 1h today"*). |
+| **Performance Dashboard** | Real charts comparing planned vs. actual hours, daily streak tracking, and estimate accuracy ratio (`accuracyRatio`). |
 
 ---
 
-## 🧭 Vistas y Funcionalidades Inteligentes
+## 🧭 Views & Smart Features
 
-### 1. Objetivo Diario (`DailyFocus`) & Temporizador (`Timer`)
-- **Foco único**: Presenta una única tarea activa para evitar parálisis por análisis.
-- **Checklist de Subtareas Persistentes**: Muestra y guarda en SQLite las subtareas del ticket activo para marcar el progreso paso a paso.
-- **💡 ¿Cómo lo resuelvo? (Guía Técnica IA + Q&A con contexto del Repo)**: Explica la arquitectura y flujo de datos para resolver la tarea, muestra código de partida (`quickSnippet`), lee archivos reales del repositorio vinculado y permite hacer **preguntas técnicas directas** dentro de la misma guía.
-- **Detector de atascos**: Alerta visual cuando superas el tiempo estimado de la tarea para sugerir pausas o cortes limpios.
+### 1. Daily Focus (`DailyFocus`) & Focus Timer (`Timer`)
+- **Single-task focus**: Shows one active task at a time to eliminate analysis paralysis.
+- **Persistent Subtask Checklist**: Renders and saves ticket subtasks directly in SQLite so progress persists across sessions.
+- **💡 How do I solve this? (AI Technical Guide + Repo-Aware Q&A)**: Explains architecture and data flow, provides a starter `quickSnippet`, reads real files from your linked GitHub repository or local folder, and includes an inline **Technical Q&A** chat inside the guide.
+- **Overtime detector**: Visual alert when you exceed the estimated time to suggest clean commits or short breaks.
 
-### 2. Proyectos & Backlog (`ProjectManager`)
-- **🔗 Repositorio GitHub (o ruta local) vinculado**: Al crear un proyecto o seleccionarlo, puedes vincular una URL de GitHub (y un token opcional en Ajustes si es privado) para que la Guía Técnica inspeccione tu árbol de archivos y código real.
-- **🗺️ Planificador de Nuevo Proyecto (Estilo Jira / Azure DevOps)**:
-  - **Paso 1 (Briefing técnico):** Define nombre, descripción, stack tecnológico opcional y nivel de desglose (`MVP Enfocado`, `Completo por Módulos` o `Detallado estilo Jira`). El PM calcula automáticamente la meta total de horas según el alcance y tu velocidad histórica.
-  - **Paso 2 (Tablero por Épicas y Subtareas):** Agrupa automáticamente las tareas por **Épicas / Módulos** (Arquitectura, Base de Datos, Backend API, Auth, Frontend UI, QA, etc.), cada una con sus **subtareas editables**. Incluye chat de refinamiento en tiempo real antes de volcar todo al backlog en bloque.
-- **📋 Backlog por Épicas y Desglose bajo demanda**:
-  - Alterna entre vista agrupada **Por Épica** o **Lista** plana.
-  - Despliega y marca subtareas persistidas directamente desde el backlog, o pulsa **Desglosar** en cualquier tarea para que el PM genere sus subtareas.
-- **⚖️ Evaluación de Tareas con el PM**: Al crear una tarea suelta, *"Evaluar con PM"* dictamina si aporta valor al MVP, asigna prioridad y ajusta los minutos según tu velocidad histórica (`accuracyRatio`).
+### 2. Projects & Backlog (`ProjectManager`)
+- **🗺️ New Project Planner (Jira / Azure DevOps Style)**:
+  - **Step 1 (Technical Briefing):** Enter project name, description, optional tech stack, optional GitHub/local repository URL, and breakdown depth (`Focused MVP`, `Full Modules`, or `Detailed Jira-style`). The PM automatically calculates the total hour goal based on scope and your historical velocity.
+  - **Step 2 (Epics & Subtasks Board):** Groups proposed tasks by **Epics / Modules** with editable titles, priorities, durations, and subtasks, plus a conversational PM refiner before committing everything to the backlog in one transaction.
+- **🔗 GitHub / Local Repository Linking**: Link any public or private GitHub repository (or local folder path) so the Technical Guide inspects your actual codebase.
+- **📋 Backlog by Epic & On-Demand Breakdown**: Toggle between **By Epic** and flat **List** views, check off subtasks directly in the backlog, or click **Break down** on any task to generate subtasks with AI.
+- **⚖️ PM Task Evaluation**: When creating a single task, click **Evaluate with PM** to check MVP value, get a realistic priority, and calibrate duration using your `accuracyRatio`.
 
-### 3. Copiloto PM & Jornada (`Chatbot`)
-- **Planificación desde el chat**: Si describes un proyecto nuevo (*"Desglósame una app de reservas con React, FastAPI y Stripe de 20h"*), el Copiloto genera una propuesta interactiva agrupada por épicas y subtareas con botones para **Crear Proyecto en 1 clic** o **Abrir y editar en Planificador**.
-- **Acciones sobre el backlog y la jornada**: Puede crear tareas en proyectos existentes, desglosar la tarea prioritaria en subtareas e interpretar ajustes de tiempo (*"+1h extra"*, *"solo puedo 1 hora"*).
-- **Híbrido**: Funciona 100% offline mediante su motor modular local y se potencia conectando **Google Gemini**, **OpenAI** o **Groq** desde Ajustes.
+### 3. PM & Daily Copilot (`Chatbot`)
+- **Project planning from chat**: Describe an app or feature set and the Copilot returns an interactive Epic/Task/Subtask proposal card with one-click **Create Project** or **Open & edit in Planner**.
+- **Backlog & schedule actions**: Summarize active projects (*"Tell me what my project is about"*), add tasks, swap technologies across existing tasks (*"Change Prisma to SQLAlchemy"*), delete obsolete tasks, break down your active task, or adjust daily hours.
+- **Hybrid execution**: Works offline with its modular local planner and connects to **Google Gemini**, **OpenAI**, or **Groq** when an API Key is configured.
 
-### 4. Métricas de Rendimiento (`Dashboard`)
-- Gráficos con Recharts: comparativa semanal de horas planificadas vs. reales.
-- Contador de **Racha de Días** cumpliendo el objetivo.
-- **Índice Anti-Fricción**: Mide tu constancia penalizando las tareas pospuestas repetidamente.
+### 4. Performance Dashboard (`Dashboard`)
+- Recharts visualizations comparing planned vs. actual hours and daily completion rates.
+- **Active Streak** counter and **Anti-Friction Score** tracking postponed tasks.
+- Project effort donut chart and priority distribution breakdown.
 
 ---
 
-## ⚙️ Configuración del Asistente de IA
+## ⚙️ AI & Language Configuration
 
-Tus datos y claves se almacenan **únicamente en tu equipo**:
+All settings and keys are stored **strictly locally** in SQLite (`backend/data/procrastinator.db`, ignored by Git) and API keys are never sent back to the frontend in plaintext once saved:
 
-1. Pulsa el icono **⚙️ (Ajustes)** en la barra superior.
-2. Selecciona tu proveedor:
-   - **Google Gemini**: Clave gratuita en [Google AI Studio](https://aistudio.google.com/app/apikey).
-   - **OpenAI**: Desde [platform.openai.com](https://platform.openai.com/api-keys).
-   - **Groq**: Desde [console.groq.com](https://console.groq.com/keys).
-3. Introduce tu API Key y pulsa **Guardar Ajustes**.
+1. Click **⚙️ (Settings)** in the top navigation bar.
+2. Choose your **Interface & Assistant Language**: **Español (ES)** or **English (EN)**.
+3. Select your AI provider:
+   - **Google Gemini**: Free/paid keys at [Google AI Studio](https://aistudio.google.com/app/apikey).
+   - **OpenAI**: From [platform.openai.com](https://platform.openai.com/api-keys).
+   - **Groq**: From [console.groq.com](https://console.groq.com/keys).
+4. *(Optional)* Add a **GitHub Token** (`github.com/settings/tokens`) for private repositories or higher GitHub API rate limits (public repositories also fall back automatically to public archive/raw downloads or local folder paths).
 
-> Si no configuras ninguna clave, el asistente continuará funcionando con su motor local modular sin conexión.
+> Without an API Key, the app remains fully usable via its offline modular planning and analysis engine.
 
 ---
 
-## 📂 Estructura del Proyecto (Arquitectura Modular Desacoplada)
+## 📂 Project Structure (Modular Decoupled Architecture)
 
-El sistema separa el backend modular en Python (**FastAPI** + **SQLite**) de la interfaz (**React** + **Vite** + **Electron**):
+The codebase cleanly separates the modular Python backend (**FastAPI** + **SQLite**) from the micro-component frontend (**React** + **Vite** + **Electron**):
 
 ```
 Procrastinator/
 ├── backend/
 │   ├── app/
-│   │   ├── lib/                    # Librería compartida (utilidades, LLM y BD)
-│   │   │   ├── json_utils.py       # Parseo seguro y extracción JSON de LLMs
-│   │   │   ├── task_normalizer.py  # Normalización de tareas, épicas y subtareas
-│   │   │   ├── llm_client.py       # Cliente unificado Gemini / OpenAI / Groq
-│   │   │   └── db_helpers.py       # Context manager SQLite y helpers CRUD
-│   │   ├── services/               # Lógica de negocio e IA desacoplada
-│   │   │   ├── local_planner.py    # Planificador modular offline y parsers
-│   │   │   ├── roadmap_service.py  # Generación y refinamiento de roadmaps
-│   │   │   ├── task_ai_service.py  # Guía técnica, evaluación y desglose de tareas
-│   │   │   └── copilot_service.py  # Orquestador del Copiloto PM
-│   │   ├── routers/                # Endpoints REST separados por dominio
-│   │   │   ├── projects.py         # /api/projects y /api/projects/commit-plan
-│   │   │   ├── tasks.py            # /api/tasks y registro de tiempo
-│   │   │   ├── planning.py         # /api/daily-plan, /api/stats y /api/settings
-│   │   │   ├── chat.py             # /api/chat y acciones del Copiloto
-│   │   │   └── ai.py               # /api/ai/* (roadmap, refine, breakdown, guide)
-│   │   ├── main.py                 # Punto de entrada FastAPI y montaje de routers
-│   │   ├── database.py             # Esquema SQLite local y migraciones seguras
-│   │   ├── models.py               # Esquemas Pydantic tipados
-│   │   ├── scheduler.py            # Reparto de carga diaria y estadísticas
-│   │   └── ai_service.py           # Fachada de re-exportación de servicios IA
-│   ├── data/
-│   │   └── procrastinator.db       # Base de datos SQLite local persistente
+│   │   ├── lib/                    # Shared utilities (JSON, LLM client, repo reader, SQLite helpers)
+│   │   ├── services/               # Decoupled AI & planning services (roadmap, task AI, copilot, local planner)
+│   │   ├── routers/                # FastAPI routers by domain (projects, tasks, planning, chat, ai)
+│   │   ├── main.py                 # FastAPI entry point & router registration
+│   │   ├── database.py             # Local SQLite schema & safe migrations
+│   │   ├── models.py               # Pydantic request/response schemas
+│   │   ├── scheduler.py            # Daily capacity algorithm & stats
+│   │   └── ai_service.py           # Compatibility re-export facade
+│   ├── data/                       # Local SQLite DB directory (gitignored)
 │   ├── requirements.txt            # fastapi, uvicorn, pydantic, httpx
-│   └── run.py                      # Script directo de arranque (puerto 8000)
+│   └── run.py                      # Backend launcher (port 8000)
 ├── electron/
-│   ├── main.cjs                    # Proceso principal nativo de Electron
-│   └── preload.cjs                 # Puente seguro de Electron
+│   ├── main.cjs                    # Electron main process
+│   └── preload.cjs                 # Secure Electron preload bridge
 ├── src/
-│   ├── style.js                    # Tokens y estilos estructurados por objetos
-│   ├── style.d.ts                  # Tipado estricto de estilos
-│   ├── services/
-│   │   └── api.ts                  # Cliente HTTP tipado que conecta con FastAPI
+│   ├── i18n/                       # Separate JS localization & conversation files (es.js, en.js, index.tsx)
+│   ├── style.js & style.d.ts       # Centralized flat design tokens
+│   ├── services/api.ts             # Typed HTTP client for FastAPI
+│   ├── types/index.ts              # Shared TypeScript interfaces
 │   ├── components/
-│   │   ├── ProcrastinatorBox/      # Primitivo estático ("div-procrastinator")
-│   │   ├── ProcrastinatorButton/   # Botón estático
-│   │   ├── ProcrastinatorBadge/    # Badge estático
-│   │   ├── ProcrastinatorInput/    # Input estático
-│   │   ├── ProcrastinatorModal/    # Modal estático
-│   │   ├── ProcrastinatorText/     # Tipografía estática
-│   │   ├── DailyFocus/             # Vista del objetivo diario y cola de tareas
-│   │   ├── Timer/                  # Temporizador, subtareas persistentes y guía IA
-│   │   ├── ProjectManager/         # Planificador por épicas, backlog y evaluación PM
-│   │   ├── Dashboard/              # Métricas y gráficos de rendimiento
-│   │   ├── Chatbot/                # Copiloto PM conversacional con propuestas
-│   │   ├── Navbar/                 # Barra de navegación superior
-│   │   └── SettingsModal/          # Configuración de horas y claves
-│   ├── types/
-│   │   └── index.ts                # Modelos TypeScript sincronizados
-│   ├── App.tsx                     # Orquestador principal de vistas
-│   └── main.tsx                    # Entrada de React
-├── iniciar.bat                     # Lanzador de un solo clic (FastAPI + Desktop)
-├── iniciar-web.bat                 # Lanzador de un solo clic (FastAPI + Web)
+│   │   ├── Procrastinator*/        # Typed UI primitives (Box, Button, Badge, Input, Modal, Text)
+│   │   ├── FormattedText/          # Inline markdown (**bold**, *italic*, `code`) renderer
+│   │   ├── DailyFocus/ & DailyCapacityCard/
+│   │   ├── Timer/, SubtaskChecklist/ & TaskTechnicalGuide/
+│   │   ├── ProjectManager/, ProjectPlannerPanel/, NewTaskPanel/, ProjectRepoCard/ & BacklogTaskRow/
+│   │   ├── Dashboard/, DashboardKpis/ & DashboardCharts/
+│   │   ├── Chatbot/ & ChatProposalCard/
+│   │   ├── Navbar/
+│   │   └── SettingsModal/
+│   ├── App.tsx
+│   └── main.tsx
+├── iniciar.bat                     # One-click launcher (FastAPI + Electron)
+├── iniciar-web.bat                 # One-click launcher (FastAPI + Web)
 └── package.json
 ```

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from ..lib.json_utils import extract_json_block
 from ..lib.llm_client import query_llm
 from ..lib.task_normalizer import normalize_proposed_tasks, target_task_count
+from ..scheduler import get_settings
 from .local_planner import build_local_roadmap, refine_roadmap_local
 
 
@@ -32,9 +33,12 @@ async def generate_roadmap(
         '"estimatedMinutes":40,"priority":"urgent|high|medium|low","difficulty":"easy|medium|hard","subtasks":[{"title":"..."}]}]'
     )
 
+    lang = get_settings().get('language', 'es')
+    lang_note = 'Write titles, descriptions, epics and subtasks in English.' if lang == 'en' else 'Escribe títulos, descripciones, épicas y subtareas en español.'
+
     try:
         raw = await query_llm(
-            prompt,
+            f"{prompt}\n{lang_note}",
             "Arquitecto y Technical PM estilo Jira. Responde solo JSON.",
             max_tokens=2600,
             json_mode=True,

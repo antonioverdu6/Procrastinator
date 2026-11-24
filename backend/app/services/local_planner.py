@@ -416,24 +416,24 @@ def refine_roadmap_local(current_tasks: List[Dict[str, Any]], instruction: str) 
 
 
 def parse_capacity_command(lower: str) -> Optional[Tuple[int, bool, str]]:
-    """Detecta ajustes de capacidad diaria en lenguaje natural."""
-    if "+1h" in lower or "1 hora extra" in lower or "una hora extra" in lower or "tengo 1 hora más" in lower:
+    """Detecta ajustes de capacidad diaria en lenguaje natural (ES/EN)."""
+    if "+1h" in lower or "1 hora extra" in lower or "una hora extra" in lower or "1 extra hour" in lower or "extra hour" in lower:
         return (60, False, "Añadida +1 hora extra a tu jornada de hoy")
-    if "+2h" in lower or "2 horas extra" in lower:
+    if "+2h" in lower or "2 horas extra" in lower or "2 extra hours" in lower:
         return (120, False, "Añadidas +2 horas extra a tu jornada de hoy")
-    if "+30" in lower or "30 minutos extra" in lower or "media hora extra" in lower:
+    if "+30" in lower or "30 minutos extra" in lower or "30 extra min" in lower:
         return (30, False, "Añadidos +30 min extra a tu jornada de hoy")
-    if "-1h" in lower or "1 hora menos" in lower or "una hora menos" in lower:
+    if "-1h" in lower or "1 hora menos" in lower or "1 hour less" in lower:
         return (-60, False, "Reducida 1 hora de tu jornada de hoy")
     if "-30" in lower or "30 minutos menos" in lower:
         return (-30, False, "Reducidos 30 min de tu jornada de hoy")
 
-    abs_min = re.search(r'(?:solo\s+(?:puedo|tengo|dispongo\s+de)|hoy\s+tengo)\s+(\d{2,3})\s*(?:min|minutos|m\b)', lower)
+    abs_min = re.search(r'(?:solo\s+(?:puedo|tengo|dispongo\s+de)|hoy\s+tengo|only\s+(?:have|can)|today\s+i\s+have)\s+(\d{2,3})\s*(?:min|minutos|minutes|m\b)', lower)
     if abs_min:
         mins = max(30, min(480, int(abs_min.group(1))))
         return (mins, True, f"Capacidad de hoy fijada en {mins} minutos")
 
-    abs_hr = re.search(r'(?:solo\s+(?:puedo|tengo|dispongo\s+de)|hoy\s+tengo)\s+(\d+(?:[.,]\d+)?)\s*(?:h|hora|horas)', lower)
+    abs_hr = re.search(r'(?:solo\s+(?:puedo|tengo|dispongo\s+de)|hoy\s+tengo|only\s+(?:have|can)|today\s+i\s+(?:only\s+)?have)\s+(\d+(?:[.,]\d+)?)\s*(?:h|hora|horas|hour|hours)', lower)
     if abs_hr:
         hrs = float(abs_hr.group(1).replace(',', '.'))
         mins = max(30, min(480, int(round(hrs * 60))))
@@ -443,17 +443,18 @@ def parse_capacity_command(lower: str) -> Optional[Tuple[int, bool, str]]:
 
 
 def looks_like_project_breakdown_request(text: str) -> bool:
-    """Detecta si el mensaje describe un proyecto para desglosar estilo Jira."""
+    """Detecta si el mensaje describe un proyecto para desglosar estilo Jira (ES/EN)."""
     lower = text.lower()
     triggers = [
         'desglosa', 'desglósame', 'planifica', 'planifícame', 'roadmap',
         'como un jira', 'azure devops', 'épicas', 'epicas', 'módulos', 'modulos',
         'quiero hacer', 'quiero crear', 'quiero construir', 'quiero desarrollar',
         'voy a hacer', 'voy a crear', 'nuevo proyecto', 'crear proyecto', 'crea un proyecto',
+        'break down', 'plan a project', 'create a project', 'build an app', 'want to build',
     ]
     if any(t in lower for t in triggers):
         return True
-    domain_words = ['app', 'aplicación', 'aplicacion', 'web', 'plataforma', 'saas', 'sistema', 'api', 'bot', 'tienda', 'crm', 'erp']
+    domain_words = ['app', 'aplicación', 'aplicacion', 'web', 'plataforma', 'saas', 'sistema', 'api', 'bot', 'tienda', 'crm', 'erp', 'platform']
     return len(text) >= 55 and any(w in lower for w in domain_words)
 
 

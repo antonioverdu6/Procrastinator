@@ -201,6 +201,7 @@ def _looks_like_project_overview_question(lower: str) -> bool:
         'resumen del proyecto', 'resume el proyecto', 'resume mi proyecto',
         'estado del proyecto', 'qué módulos tiene', 'que modulos tiene',
         'cuántas tareas', 'cuantas tareas', 'sobre mi proyecto',
+        'what my project is about', 'about my project', 'project summary', 'my projects',
     ]
     return any(t in lower for t in triggers)
 
@@ -316,7 +317,9 @@ async def handle_copilot_chat(
 
             ctx_block = _build_llm_context_payload(msg_text, context, velocity, repo_summary=repo_summary)
             note = f'\nAjuste detectado: {cap_cmd[2]}' if cap_cmd else ''
-            user_prompt = f"{ctx_block}\nMensaje:\"{msg_text}\"{note}"
+            lang = settings.get('language', 'es')
+            lang_rule = '\nIdioma obligatorio de respuesta ("reply"): English.' if lang == 'en' else '\nIdioma obligatorio de respuesta ("reply"): Español.'
+            user_prompt = f"{ctx_block}\nMensaje:\"{msg_text}\"{note}{lang_rule}"
             max_out = 2400 if looks_like_project_breakdown_request(msg_text) else 1200
             raw = await query_llm(user_prompt, COPILOT_SYSTEM_PROMPT, max_tokens=max_out, json_mode=True)
             data = extract_json_block(raw, expect_array=False)

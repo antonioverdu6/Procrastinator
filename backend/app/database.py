@@ -128,10 +128,12 @@ def init_db():
         pomodoroWorkMins INTEGER DEFAULT 45,
         pomodoroBreakMins INTEGER DEFAULT 10,
         soundEnabled INTEGER DEFAULT 1,
-        githubToken TEXT DEFAULT ''
+        githubToken TEXT DEFAULT '',
+        language TEXT DEFAULT 'es'
     )
     ''')
     _ensure_column(cursor, 'settings', 'githubToken', "TEXT DEFAULT ''")
+    _ensure_column(cursor, 'settings', 'language', "TEXT DEFAULT 'es'")
 
     # Insertar configuración por defecto si no existe
     cursor.execute('SELECT COUNT(*) as count FROM settings WHERE id = 1')

@@ -107,6 +107,13 @@ class UserSettingsModel(BaseModel):
     pomodoroBreakMins: int = 10
     soundEnabled: bool = True
     githubToken: Optional[str] = ''
+    language: Literal['es', 'en'] = 'es'
+    hasApiKey: Optional[bool] = None
+    apiKeyPreview: Optional[str] = ''
+    hasGithubToken: Optional[bool] = None
+    githubTokenPreview: Optional[str] = ''
+    clearApiKey: Optional[bool] = False
+    clearGithubToken: Optional[bool] = False
 
 # --- IA Y ASISTENTE ---
 class TaskActionPlanResponse(BaseModel):

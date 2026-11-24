@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter
 
@@ -20,6 +20,32 @@ from ..scheduler import (
 router = APIRouter(prefix="/api", tags=["planning"])
 
 
+def _mask_secret(secret: str) -> str:
+    clean = (secret or '').strip()
+    if not clean:
+        return ''
+    if len(clean) <= 8:
+        return '****'
+    return f"{clean[:4]}...{clean[-4:]}"
+
+
+def _sanitize_settings(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Devuelve configuración al cliente sin exponer nunca las claves reales en texto plano."""
+    api_key = (raw.get('apiKey') or '').strip()
+    gh_token = (raw.get('githubToken') or '').strip()
+    return {
+        **raw,
+        "apiKey": "",
+        "githubToken": "",
+        "hasApiKey": bool(api_key),
+        "apiKeyPreview": _mask_secret(api_key),
+        "hasGithubToken": bool(gh_token),
+        "githubTokenPreview": _mask_secret(gh_token),
+        "clearApiKey": False,
+        "clearGithubToken": False,
+    }
+
+
 @router.get("/daily-plan", response_model=DailyPlanResponse)
 def get_daily_plan(date: Optional[str] = None):
     return get_effective_capacity(date or get_today_date_str())
@@ -37,11 +63,29 @@ def get_stats():
 
 @router.get("/settings", response_model=UserSettingsModel)
 def get_user_settings():
-    return get_settings()
+    return _sanitize_settings(get_settings())
 
 
 @router.post("/settings", response_model=UserSettingsModel)
 def update_user_settings(settings: UserSettingsModel):
+    current = get_settings()
+    incoming_key = (settings.apiKey or '').strip()
+    incoming_gh = (settings.githubToken or '').strip()
+
+    if settings.clearApiKey:
+        final_api_key = ''
+    elif incoming_key:
+        final_api_key = incoming_key
+    else:
+        final_api_key = (current.get('apiKey') or '').strip()
+
+    if settings.clearGithubToken:
+        final_gh_token = ''
+    elif incoming_gh:
+        final_gh_token = incoming_gh
+    else:
+        final_gh_token = (current.get('githubToken') or '').strip()
+
     with db_session() as conn:
         conn.cursor().execute(
             '''
@@ -54,19 +98,21 @@ def update_user_settings(settings: UserSettingsModel):
                 pomodoroWorkMins = ?,
                 pomodoroBreakMins = ?,
                 soundEnabled = ?,
-                githubToken = ?
+                githubToken = ?,
+                language = ?
             WHERE id = 1
             ''',
             (
                 settings.defaultDailyHours,
                 settings.aiProvider,
-                settings.apiKey,
+                final_api_key,
                 settings.customModel,
                 settings.strictness,
                 settings.pomodoroWorkMins,
                 settings.pomodoroBreakMins,
                 1 if settings.soundEnabled else 0,
-                (settings.githubToken or '').strip(),
+                final_gh_token,
+                settings.language or 'es',
             ),
         )
-    return settings
+    return _sanitize_settings(get_settings())

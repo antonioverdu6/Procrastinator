@@ -169,10 +169,13 @@ async def get_task_action_plan(task: Dict[str, Any], project: Optional[Dict[str,
         '"steps":["1. ...","2. ..."],"filesToTouch":["ruta"],"pitfall":"trampa concreta","quickSnippet":"código max 12 líneas"}'
     )
 
+    lang = settings.get('language', 'es')
+    lang_instr = "Answer in English." if lang == 'en' else "Responde en español."
+
     llm_notice = ""
     if settings.get('apiKey', '').strip():
         try:
-            raw = await query_llm(prompt, "Staff Software Engineer pragmático. Responde solo JSON.", max_tokens=1100, json_mode=True)
+            raw = await query_llm(f"{prompt}\n{lang_instr}", "Staff Software Engineer pragmático. Responde solo JSON.", max_tokens=1100, json_mode=True)
             data = extract_json_block(raw, expect_array=False)
             if isinstance(data, dict) and data.get("steps"):
                 return {
@@ -257,10 +260,13 @@ async def ask_task_technical_question(
         'Responde SOLO JSON: {"answer":"explicación en español","referencedFiles":["ruta"],"codeSnippet":"código opcional"}'
     )
 
+    lang = settings.get('language', 'es')
+    lang_instr = "Answer in English." if lang == 'en' else "Responde en español."
+
     llm_notice = ""
     if settings.get('apiKey', '').strip():
         try:
-            raw = await query_llm(prompt, "Staff Software Engineer concreto. Responde solo JSON.", max_tokens=1000, json_mode=True)
+            raw = await query_llm(f"{prompt}\n{lang_instr}", "Staff Software Engineer concreto. Responde solo JSON.", max_tokens=1000, json_mode=True)
             data = extract_json_block(raw, expect_array=False)
             if isinstance(data, dict) and data.get("answer"):
                 return {

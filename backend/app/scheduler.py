@@ -10,7 +10,7 @@ def get_settings() -> Dict[str, Any]:
     row = conn.cursor().execute('SELECT * FROM settings WHERE id = 1').fetchone()
     conn.close()
     if not row:
-        return {'defaultDailyHours': 2.5, 'aiProvider': 'gemini', 'apiKey': '', 'strictness': 'balanced'}
+        return {'defaultDailyHours': 2.5, 'aiProvider': 'gemini', 'apiKey': '', 'strictness': 'balanced', 'language': 'es'}
     return dict(row)
 
 def get_effective_capacity(date_str: str) -> Dict[str, Any]:
